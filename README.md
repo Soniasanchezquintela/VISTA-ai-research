@@ -7,13 +7,13 @@ Object Location, Area Of Research, Visual System, Object Detection,,Impaired Ind
 
 - heic_to_jpg.sh: script to convert iPhone images in HEIC format to standard jpeg. How to use it:
 
-'''
+```
 ./heic_to_jpg.sh <directory_with_heic_images> <quality>
-'''
+```
 
 This will convert all images in the specified directory with the same output name as the original one but with .jpg extension. By default, quality is set to 95%. It is recommended not to use low values since then details in the image are lost and this heavily impacts AI model's performance.
 
-- test_one_image.py: inference with the Yolo11 object detector. You need to download the weight file sku110k_768_e20_pat5.pt to this same directory, which can be found in the shared [Google Drive folder](https://drive.google.com/drive/folders/1Looy2jQJs1j0C8SvU6CuQzLTPKX01EGI). Remember you need first to create your virtual environment before you can run this program.
+- test_one_image.py: inference with the Yolo11 object detector. You need to download the weight file sku110k_768_e20_pat5.pt to this same directory, which can be found in the shared [Google Drive folder](https://drive.google.com/drive/folders/1Looy2jQJs1j0C8SvU6CuQzLTPKX01EGI). **Remember you need first to create your virtual environment before you can run this program!**
 
 ## Create your virtual environment
 

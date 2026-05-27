@@ -1,0 +1,7 @@
+*.pt
+vista_env/
+__pycache__/
+*.log
+*.tmp
+inference_results/
+runs/

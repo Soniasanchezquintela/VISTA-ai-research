@@ -5,6 +5,8 @@ Object Location, Area Of Research, Visual System, Object Detection,,Impaired Ind
 
 ## Tools in this repo
 
+- train_yolo.py: script to start training the Yolo11 model. When you execute this script, it will start downloading everything it needs.
+
 - heic_to_jpg.sh: script to convert iPhone images in HEIC format to standard jpeg. How to use it:
 
 ```

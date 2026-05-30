@@ -22,6 +22,17 @@ MAX_DET = 100
 OUTPUT_DIR = Path("inference_results")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+def filter_border_boxes(boxes, img_width, img_height, border = 20):
+    """Return only boxes that do not touch the image border."""
+    filtered = []
+    for box in boxes:
+        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        if x1 <= border or y1 <= border or x2 >= img_width - border or y2 >= img_height - border:
+            continue
+        filtered.append(box)
+    return filtered
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Run YOLO inference on one shelf image."
@@ -60,10 +71,15 @@ def main():
     # results is a list; for one image, take results[0]
     result = results[0]
 
+
     # Print detection summary
     num_boxes = len(result.boxes)
     print(f"Image: {image_path.name}")
     print(f"Detected products: {num_boxes}")
+
+    result.boxes = filter_border_boxes(result.boxes, img_width=result.orig_img.shape[1], img_height=result.orig_img.shape[0])
+    num_boxes = len(result.boxes)
+    print(f"Detected products (after filtering border boxes): {num_boxes}")
 
     # Print each box
     for i, box in enumerate(result.boxes):

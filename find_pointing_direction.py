@@ -53,7 +53,7 @@ while cap.isOpened():
     height, width, _ = frame.shape
 
     # Flip horizontally for natural mirror view, convert to RGB
-    frame = cv2.flip(frame, 1)
+    #frame = cv2.flip(frame, 1)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
     # Convert OpenCV frame to MediaPipe Image object

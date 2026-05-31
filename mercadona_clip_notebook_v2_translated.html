@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mercadona CLIP — Translated Notebook</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b22;
+    --bg3: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+
+  header {
+    padding: 40px 48px 36px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+    flex-wrap: wrap;
+  }
+  .nb-label { font-family: var(--mono); font-size: 11px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+  h1 { font-size: 26px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .nb-desc { font-size: 13px; color: var(--text2); max-width: 580px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .badge { font-family: var(--mono); font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 1px solid; }
+  .badge.green  { color: var(--green);  border-color: #238636; background: #0d1f12; }
+  .badge.blue   { color: var(--accent); border-color: #1f6feb; background: #0d1b2a; }
+  .badge.orange { color: var(--orange); border-color: #9e6a03; background: #1f1800; }
+  .badge.purple { color: var(--purple); border-color: #6e40c9; background: #160d2a; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 40px 48px; }
+
+  .run-order {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 20px; margin: 20px 0 40px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .run-num { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 2px 10px; color: var(--accent); }
+  .run-arrow { color: var(--text3); }
+  .run-num.important { color: var(--orange); border-color: #9e6a03; }
+  .run-note { color: var(--text3); font-size: 11px; margin-left: 8px; }
+
+  .section-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--text3); margin: 40px 0 14px; display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .cell { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+  .cell-header {
+    background: var(--bg2); padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+  }
+  .cell-num { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 8px; color: var(--text2); font-size: 11px; }
+  .cell-tag { margin-left: auto; font-size: 10px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); color: var(--text3); }
+  .cell-tag.important { color: var(--orange); border-color: #9e6a03; background: #1f1800; }
+  .cell-tag.new       { color: var(--purple); border-color: #6e40c9; background: #160d2a; }
+  .cell-body {
+    background: var(--bg); padding: 18px 20px;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.85;
+    white-space: pre; overflow-x: auto; color: #c9d1d9;
+  }
+  .kw  { color: #ff7b72; }
+  .fn  { color: #d2a8ff; }
+  .st  { color: #a5d6ff; }
+  .cm  { color: #6e7681; font-style: italic; }
+  .num { color: #79c0ff; }
+  .var { color: #ffa657; }
+  .hl  { background: #1f2d1f; border-left: 2px solid var(--green); padding-left: 8px; display: block; margin-left: -20px; padding-right: 20px; }
+
+  .note {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0 20px;
+    font-size: 13px; color: var(--text2);
+  }
+  .note.warn { border-left-color: var(--orange); }
+  .note.ok   { border-left-color: var(--green); }
+  .note.new  { border-left-color: var(--purple); }
+  .note strong { color: var(--text); font-weight: 500; }
+
+  .diff-tag {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    padding: 1px 6px; border-radius: 3px; margin-left: 8px;
+    background: #160d2a; color: var(--purple); border: 1px solid #6e40c9;
+    vertical-align: middle;
+  }
+
+  footer {
+    text-align: center; padding: 32px;
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    border-top: 1px solid var(--border);
+  }
+  footer span { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="nb-label">Google Colab Notebook · v2 — Translated</div>
+    <h1>Mercadona CLIP Fine-tuning <span style="color:var(--purple)">+ Translation</span></h1>
+    <p class="nb-desc">Same pipeline as v1 but with Spanish→English translation applied to the training data at scrape time. The model sees consistent English text during both training and inference, matching its pretraining distribution.</p>
+    <div class="badges">
+      <span class="badge purple">v2 · translated training data</span>
+      <span class="badge blue">openai/clip-vit-base-patch32</span>
+      <span class="badge blue">4,620 products</span>
+      <span class="badge orange">T4 GPU · ~75 min total</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="run-order">
+    <span class="run-note" style="margin:0 4px 0 0">RUN ORDER</span>
+    <span class="run-num">1</span><span class="run-arrow">→</span>
+    <span class="run-num">2</span><span class="run-arrow">→</span>
+    <span class="run-num">3</span><span class="run-arrow">→</span>
+    <span class="run-num">4</span><span class="run-arrow">→</span>
+    <span class="run-num">5</span><span class="run-arrow">→</span>
+    <span class="run-num">6</span><span class="run-arrow">→</span>
+    <span class="run-num">7</span><span class="run-arrow">→</span>
+    <span class="run-num">8</span><span class="run-arrow">→</span>
+    <span class="run-num important">9</span><span class="run-arrow">→</span>
+    <span class="run-num">10</span><span class="run-arrow">→</span>
+    <span class="run-num">11</span>
+    <span class="run-note">· Cell 9 (download) runs immediately after training</span>
+  </div>
+
+  <div class="note new">
+    <strong>What changed from v1:</strong> Cell 1 installs deep-translator. Cell 2 (scraper) now builds text from <strong>product name + packaging + size only</strong> — the category chain has been removed to prevent cross-contamination (e.g. olive oil text previously contained "spices and sauces", causing spice queries to incorrectly match olive oil). Each product's text is then translated to English and both <code>text</code> (Spanish) and <code>text_en</code> (English) are saved to the JSON. Cell 4 uses <code>text_en</code> for training. Cell 11 translates Spanish queries to English before passing to CLIP — consistent with training. Everything else is identical to v1.
+  </div>
+
+  <!-- CELL 1 -->
+  <div class="section-title">setup</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">1</span> Install dependencies <span class="cell-tag new">+ deep-translator</span></div>
+    <div class="cell-body">!pip install transformers datasets torch torchvision Pillow accelerate -q
+<span class="hl">!pip install deep-translator -q  <span class="cm"># NEW — Spanish→English translation</span></span></div>
+  </div>
+
+  <!-- CELL 2 -->
+  <div class="section-title">data collection + translation</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">2</span> Scrape Mercadona + translate text to English <span class="cell-tag new">updated</span><span class="cell-tag">~15 min</span></div>
+    <div class="cell-body"><span class="kw">import</span> requests, json, os, time
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="hl"><span class="kw">from</span> deep_translator <span class="kw">import</span> GoogleTranslator</span>
+
+<span class="var">PROJECT_DIR</span>  = <span class="st">"/content/mercadona_clip"</span>
+<span class="var">IMAGES_DIR</span>   = <span class="st">f"{PROJECT_DIR}/images"</span>
+<span class="var">DATASET_PATH</span> = <span class="st">f"{PROJECT_DIR}/mercadona_dataset.json"</span>
+os.makedirs(<span class="var">IMAGES_DIR</span>, exist_ok=<span class="kw">True</span>)
+
+<span class="var">BASE_URL</span> = <span class="st">"https://tienda.mercadona.es/api"</span>
+<span class="var">HEADERS</span>  = {
+    <span class="st">"User-Agent"</span>     : <span class="st">"Mozilla/5.0"</span>,
+    <span class="st">"Accept-Language"</span>: <span class="st">"es-ES,es;q=0.9"</span>,
+    <span class="st">"Accept"</span>         : <span class="st">"application/json"</span>,
+}
+
+<span class="var">products</span> = []
+
+<span class="kw">def</span> <span class="fn">get</span>(endpoint):
+    r = requests.get(<span class="st">f"{BASE_URL}{endpoint}"</span>, headers=<span class="var">HEADERS</span>)
+    r.raise_for_status()
+    time.sleep(<span class="num">0.3</span>)
+    <span class="kw">return</span> r.json()
+
+<span class="kw">def</span> <span class="fn">download_image</span>(url, pid):
+    path = <span class="st">f"{IMAGES_DIR}/{pid}.jpg"</span>
+    <span class="kw">if</span> os.path.exists(path): <span class="kw">return</span> path
+    <span class="kw">try</span>:
+        r = requests.get(url, headers=<span class="var">HEADERS</span>, timeout=<span class="num">10</span>)
+        <span class="kw">if</span> r.status_code == <span class="num">200</span>:
+            <span class="kw">with</span> <span class="fn">open</span>(path, <span class="st">"wb"</span>) <span class="kw">as</span> f: f.write(r.content)
+        time.sleep(<span class="num">0.1</span>)
+    <span class="kw">except</span>: <span class="kw">return</span> <span class="kw">None</span>
+    <span class="kw">return</span> path
+
+<span class="hl"><span class="kw">def</span> <span class="fn">translate</span>(text):
+    <span class="kw">try</span>:
+        <span class="kw">return</span> GoogleTranslator(source=<span class="st">"es"</span>, target=<span class="st">"en"</span>).translate(text)
+    <span class="kw">except</span>:
+        <span class="kw">return</span> text  <span class="cm"># fallback to Spanish if translation fails</span></span>
+
+<span class="kw">def</span> <span class="fn">save</span>():
+    <span class="kw">with</span> <span class="fn">open</span>(<span class="var">DATASET_PATH</span>, <span class="st">"w"</span>, encoding=<span class="st">"utf-8"</span>) <span class="kw">as</span> f:
+        json.dump(<span class="var">products</span>, f, ensure_ascii=<span class="kw">False</span>, indent=<span class="num">2</span>)
+    <span class="fn">print</span>(<span class="st">f"  💾 {len(products)} products saved"</span>)
+
+<span class="var">top_level</span> = <span class="fn">get</span>(<span class="st">"/categories/"</span>)
+<span class="fn">print</span>(<span class="st">f"✅ {len(top_level['results'])} categories found\n"</span>)
+
+<span class="kw">for</span> cat <span class="kw">in</span> <span class="var">top_level</span>[<span class="st">"results"</span>]:
+    <span class="fn">print</span>(<span class="st">f"📦 {cat['name']}"</span>)
+    <span class="kw">for</span> subcat <span class="kw">in</span> cat.get(<span class="st">"categories"</span>, []):
+        <span class="kw">try</span>: <span class="var">subcat_data</span> = <span class="fn">get</span>(<span class="st">f"/categories/{subcat['id']}/"</span>)
+        <span class="kw">except</span>: <span class="kw">continue</span>
+        <span class="kw">for</span> subsubcat <span class="kw">in</span> <span class="var">subcat_data</span>.get(<span class="st">"categories"</span>, []):
+            <span class="kw">for</span> product <span class="kw">in</span> subsubcat.get(<span class="st">"products"</span>, []):
+                <span class="var">pid</span>       = <span class="fn">str</span>(product[<span class="st">"id"</span>])
+                <span class="var">name</span>      = product.get(<span class="st">"display_name"</span>, <span class="st">""</span>)
+                <span class="var">packaging</span> = product.get(<span class="st">"packaging"</span>, <span class="st">""</span>)
+                <span class="var">size</span>      = product.get(<span class="st">"price_instructions"</span>, {}).get(<span class="st">"size_format"</span>, <span class="st">""</span>)
+                <span class="var">unit_size</span> = product.get(<span class="st">"price_instructions"</span>, {}).get(<span class="st">"unit_size"</span>, <span class="st">""</span>)
+                <span class="var">thumbnail</span> = product.get(<span class="st">"thumbnail"</span>, <span class="st">""</span>)
+                <span class="cm"># Only product-specific fields — no category chain</span>
+                <span class="cm"># Category chain caused cross-contamination: olive oil text contained</span>
+                <span class="cm"># "spices and sauces", so spice queries incorrectly matched olive oil</span>
+                <span class="var">text_es</span>   = <span class="st">", "</span>.join(<span class="fn">filter</span>(<span class="kw">None</span>, [
+                    <span class="var">name</span>, <span class="var">packaging</span>,
+                    <span class="st">f"{unit_size}{size}"</span> <span class="kw">if</span> <span class="var">unit_size</span> <span class="kw">and</span> <span class="var">size</span> <span class="kw">else</span> <span class="st">""</span>,
+                ]))
+<span class="hl">                <span class="var">text_en</span>   = <span class="fn">translate</span>(<span class="var">text_es</span>)  <span class="cm"># translate once, save to JSON</span></span>
+                <span class="var">img_path</span>  = <span class="fn">download_image</span>(<span class="var">thumbnail</span>, <span class="var">pid</span>) <span class="kw">if</span> <span class="var">thumbnail</span> <span class="kw">else</span> <span class="kw">None</span>
+                <span class="var">products</span>.append({
+                    <span class="st">"id"</span>: <span class="var">pid</span>, <span class="st">"text"</span>: <span class="var">text_es</span>,
+<span class="hl">                    <span class="st">"text_en"</span>: <span class="var">text_en</span>,  <span class="cm"># English translation for training</span></span>
+                    <span class="st">"image_path"</span>: <span class="var">img_path</span>,
+                    <span class="st">"category"</span>: cat[<span class="st">"name"</span>], <span class="st">"subcategory"</span>: subcat[<span class="st">"name"</span>],
+                    <span class="st">"subsubcat"</span>: subsubcat.get(<span class="st">"name"</span>, <span class="st">""</span>),
+                    <span class="st">"name"</span>: <span class="var">name</span>, <span class="st">"packaging"</span>: <span class="var">packaging</span>,
+                })
+    <span class="fn">save</span>()
+
+<span class="fn">print</span>(<span class="st">f"\n✅ Done! {len(products)} products, {len(list(Path(IMAGES_DIR).glob('*.jpg')))} images"</span>)
+<span class="fn">print</span>(<span class="st">f"\nSample (first product):"</span>)
+<span class="fn">print</span>(<span class="st">f"  ES: {products[0]['text']}"</span>)    <span class="cm"># e.g. "Aceite de oliva 0,4º Hacendado, Garrafa, 5.0l"</span>
+<span class="fn">print</span>(<span class="st">f"  EN: {products[0]['text_en']}"</span>)  <span class="cm"># e.g. "0.4º Hacendado olive oil, Carafe, 5.0l"</span>
+<span class="cm"># No category chain — product-specific text only</span></div>
+  </div>
+
+  <!-- CELL 3 -->
+  <div class="section-title">configuration</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">3</span> Imports & hyperparameters</div>
+    <div class="cell-body"><span class="kw">import</span> os, json, torch
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> torch <span class="kw">import</span> nn
+<span class="kw">from</span> torch.utils.data <span class="kw">import</span> Dataset, DataLoader
+<span class="kw">from</span> transformers <span class="kw">import</span> CLIPModel, CLIPProcessor, get_cosine_schedule_with_warmup
+<span class="kw">from</span> PIL <span class="kw">import</span> Image
+<span class="kw">import</span> torchvision.transforms <span class="kw">as</span> T
+
+<span class="var">PROJECT_DIR</span>  = <span class="st">"/content/mercadona_clip"</span>
+<span class="var">DATASET_PATH</span> = <span class="st">f"{PROJECT_DIR}/mercadona_dataset.json"</span>
+<span class="var">IMAGES_DIR</span>   = <span class="st">f"{PROJECT_DIR}/images"</span>
+<span class="var">MODEL_DIR</span>    = <span class="st">f"{PROJECT_DIR}/model_translated"</span>  <span class="cm"># separate from v1 model</span>
+os.makedirs(<span class="var">MODEL_DIR</span>, exist_ok=<span class="kw">True</span>)
+
+<span class="var">CFG</span> = {
+    <span class="st">"model_name"</span>  : <span class="st">"openai/clip-vit-base-patch32"</span>,
+    <span class="st">"batch_size"</span>  : <span class="num">64</span>,
+    <span class="st">"epochs"</span>      : <span class="num">20</span>,
+    <span class="st">"lr"</span>          : <span class="num">5e-6</span>,
+    <span class="st">"weight_decay"</span>: <span class="num">0.01</span>,
+    <span class="st">"warmup_steps"</span>: <span class="num">100</span>,
+    <span class="st">"grad_clip"</span>   : <span class="num">1.0</span>,
+    <span class="st">"val_split"</span>   : <span class="num">0.1</span>,
+    <span class="st">"patience"</span>    : <span class="num">5</span>,
+    <span class="st">"freeze"</span>      : <span class="st">"last2"</span>,
+}
+
+<span class="var">DEVICE</span> = <span class="st">"cuda"</span> <span class="kw">if</span> torch.cuda.is_available() <span class="kw">else</span> <span class="st">"cpu"</span>
+<span class="fn">print</span>(<span class="st">f"Device: {DEVICE}"</span>)
+<span class="fn">print</span>(<span class="st">f"GPU: {torch.cuda.get_device_name(0)}"</span>)</div>
+  </div>
+
+  <!-- CELL 4 -->
+  <div class="section-title">dataset</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">4</span> Dataset class using English translations <span class="cell-tag new">updated</span></div>
+    <div class="cell-body"><span class="kw">class</span> <span class="fn">MercadonaDataset</span>(Dataset):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, items, processor, augment=<span class="kw">False</span>):
+        self.items     = items
+        self.processor = processor
+        self.aug = T.Compose([
+            T.RandomHorizontalFlip(),
+            T.ColorJitter(<span class="num">0.2</span>, <span class="num">0.2</span>, <span class="num">0.1</span>),
+            T.RandomAffine(degrees=<span class="num">5</span>, translate=(<span class="num">0.05</span>, <span class="num">0.05</span>)),
+        ]) <span class="kw">if</span> augment <span class="kw">else</span> <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="fn">__len__</span>(self): <span class="kw">return</span> <span class="fn">len</span>(self.items)
+
+    <span class="kw">def</span> <span class="fn">__getitem__</span>(self, idx):
+        item = self.items[idx]
+        img  = Image.open(item[<span class="st">"image_path"</span>]).convert(<span class="st">"RGB"</span>)
+        <span class="kw">if</span> self.aug: img = self.aug(img)
+        inputs = self.processor(
+<span class="hl">            text=[item[<span class="st">"text_en"</span>]],  <span class="cm"># use English translation for training</span></span>
+            images=img,
+            return_tensors=<span class="st">"pt"</span>, padding=<span class="st">"max_length"</span>,
+            truncation=<span class="kw">True</span>, max_length=<span class="num">77</span>
+        )
+        <span class="kw">return</span> {k: v.squeeze(<span class="num">0</span>) <span class="kw">for</span> k, v <span class="kw">in</span> inputs.items()}
+
+<span class="kw">with</span> <span class="fn">open</span>(<span class="var">DATASET_PATH</span>) <span class="kw">as</span> f:
+    <span class="var">all_items</span> = json.load(f)
+
+<span class="cm"># Filter: must have image and English translation</span>
+<span class="var">all_items</span> = [
+    p <span class="kw">for</span> p <span class="kw">in</span> <span class="var">all_items</span>
+    <span class="kw">if</span> p.get(<span class="st">"image_path"</span>) <span class="kw">and</span> os.path.exists(p[<span class="st">"image_path"</span>]) <span class="kw">and</span> p.get(<span class="st">"text_en"</span>)
+]
+<span class="fn">print</span>(<span class="st">f"Valid items: {len(all_items)}"</span>)
+
+np.random.seed(<span class="num">42</span>)
+np.random.shuffle(<span class="var">all_items</span>)
+<span class="var">split</span>      = <span class="fn">int</span>(<span class="fn">len</span>(<span class="var">all_items</span>) * (<span class="num">1</span> - <span class="var">CFG</span>[<span class="st">"val_split"</span>]))
+<span class="var">train_items</span>, <span class="var">val_items</span> = <span class="var">all_items</span>[:<span class="var">split</span>], <span class="var">all_items</span>[<span class="var">split</span>:]
+<span class="fn">print</span>(<span class="st">f"Train: {len(train_items)} | Val: {len(val_items)}"</span>)
+
+<span class="var">processor</span> = CLIPProcessor.from_pretrained(<span class="var">CFG</span>[<span class="st">"model_name"</span>])
+<span class="var">train_ds</span>  = <span class="fn">MercadonaDataset</span>(<span class="var">train_items</span>, <span class="var">processor</span>, augment=<span class="kw">True</span>)
+<span class="var">val_ds</span>    = <span class="fn">MercadonaDataset</span>(<span class="var">val_items</span>,   <span class="var">processor</span>, augment=<span class="kw">False</span>)
+<span class="var">train_dl</span>  = DataLoader(<span class="var">train_ds</span>, batch_size=<span class="var">CFG</span>[<span class="st">"batch_size"</span>], shuffle=<span class="kw">True</span>,  num_workers=<span class="num">2</span>, pin_memory=<span class="kw">True</span>)
+<span class="var">val_dl</span>    = DataLoader(<span class="var">val_ds</span>,   batch_size=<span class="var">CFG</span>[<span class="st">"batch_size"</span>], shuffle=<span class="kw">False</span>, num_workers=<span class="num">2</span>, pin_memory=<span class="kw">True</span>)</div>
+  </div>
+
+  <!-- CELL 5 -->
+  <div class="section-title">model</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">5</span> Load model & apply freeze strategy</div>
+    <div class="cell-body"><span class="var">model</span> = CLIPModel.from_pretrained(<span class="var">CFG</span>[<span class="st">"model_name"</span>]).to(<span class="var">DEVICE</span>)
+
+<span class="kw">def</span> <span class="fn">freeze_model</span>(model, strategy):
+    <span class="kw">for</span> p <span class="kw">in</span> model.parameters(): p.requires_grad = <span class="kw">False</span>
+    <span class="kw">if</span> strategy == <span class="st">"last2"</span>:
+        <span class="kw">for</span> p <span class="kw">in</span> model.visual_projection.parameters(): p.requires_grad = <span class="kw">True</span>
+        <span class="kw">for</span> p <span class="kw">in</span> model.text_projection.parameters():   p.requires_grad = <span class="kw">True</span>
+        <span class="kw">for</span> layer <span class="kw">in</span> model.vision_model.encoder.layers[-<span class="num">2</span>:]:
+            <span class="kw">for</span> p <span class="kw">in</span> layer.parameters(): p.requires_grad = <span class="kw">True</span>
+        <span class="kw">for</span> layer <span class="kw">in</span> model.text_model.encoder.layers[-<span class="num">2</span>:]:
+            <span class="kw">for</span> p <span class="kw">in</span> layer.parameters(): p.requires_grad = <span class="kw">True</span>
+    <span class="var">trainable</span> = <span class="fn">sum</span>(p.numel() <span class="kw">for</span> p <span class="kw">in</span> model.parameters() <span class="kw">if</span> p.requires_grad)
+    <span class="var">total</span>     = <span class="fn">sum</span>(p.numel() <span class="kw">for</span> p <span class="kw">in</span> model.parameters())
+    <span class="fn">print</span>(<span class="st">f"Strategy : {strategy}"</span>)
+    <span class="fn">print</span>(<span class="st">f"Trainable: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)"</span>)
+
+<span class="fn">freeze_model</span>(<span class="var">model</span>, <span class="var">CFG</span>[<span class="st">"freeze"</span>])</div>
+  </div>
+
+  <!-- CELL 6 -->
+  <div class="section-title">training setup</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">6</span> Loss function & optimizer</div>
+    <div class="cell-body"><span class="kw">def</span> <span class="fn">clip_loss</span>(img_emb, txt_emb, logit_scale):
+    img_emb = nn.functional.normalize(img_emb, dim=-<span class="num">1</span>)
+    txt_emb = nn.functional.normalize(txt_emb, dim=-<span class="num">1</span>)
+    scale   = logit_scale.exp().clamp(max=<span class="num">100</span>)
+    logits  = (img_emb @ txt_emb.T) * scale
+    labels  = torch.arange(<span class="fn">len</span>(logits), device=<span class="var">DEVICE</span>)
+    loss_i  = nn.functional.cross_entropy(logits,   labels)
+    loss_t  = nn.functional.cross_entropy(logits.T, labels)
+    <span class="kw">return</span> (loss_i + loss_t) / <span class="num">2</span>
+
+<span class="var">optimizer</span>   = torch.optim.AdamW(
+    <span class="fn">filter</span>(<span class="kw">lambda</span> p: p.requires_grad, model.parameters()),
+    lr=<span class="var">CFG</span>[<span class="st">"lr"</span>], weight_decay=<span class="var">CFG</span>[<span class="st">"weight_decay"</span>],
+    betas=(<span class="num">0.9</span>, <span class="num">0.98</span>), eps=<span class="num">1e-6</span>
+)
+<span class="var">total_steps</span> = <span class="fn">len</span>(<span class="var">train_dl</span>) * <span class="var">CFG</span>[<span class="st">"epochs"</span>]
+<span class="var">scheduler</span>   = get_cosine_schedule_with_warmup(
+    <span class="var">optimizer</span>, <span class="var">CFG</span>[<span class="st">"warmup_steps"</span>], <span class="var">total_steps</span>
+)
+<span class="fn">print</span>(<span class="st">f"Total steps: {total_steps} | Warmup: {CFG['warmup_steps']}"</span>)</div>
+  </div>
+
+  <!-- CELL 7 -->
+  <div class="section-title">training</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">7</span> Training loop with early stopping <span class="cell-tag">~45–60 min on T4</span></div>
+    <div class="cell-body"><span class="var">best_val</span>, <span class="var">patience_count</span>, <span class="var">history</span> = <span class="fn">float</span>(<span class="st">"inf"</span>), <span class="num">0</span>, []
+
+<span class="kw">for</span> epoch <span class="kw">in</span> <span class="fn">range</span>(<span class="var">CFG</span>[<span class="st">"epochs"</span>]):
+    model.train()
+    <span class="var">train_loss</span> = <span class="num">0</span>
+    <span class="kw">for</span> batch <span class="kw">in</span> <span class="var">train_dl</span>:
+        batch = {k: v.to(<span class="var">DEVICE</span>) <span class="kw">for</span> k, v <span class="kw">in</span> batch.items()}
+        out   = model(**batch)
+        loss  = <span class="fn">clip_loss</span>(out.image_embeds, out.text_embeds, model.logit_scale)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), <span class="var">CFG</span>[<span class="st">"grad_clip"</span>])
+        <span class="var">optimizer</span>.step(); <span class="var">scheduler</span>.step(); <span class="var">optimizer</span>.zero_grad()
+        <span class="var">train_loss</span> += loss.item()
+    <span class="var">train_loss</span> /= <span class="fn">len</span>(<span class="var">train_dl</span>)
+
+    model.eval()
+    <span class="var">val_loss</span> = <span class="num">0</span>
+    <span class="kw">with</span> torch.no_grad():
+        <span class="kw">for</span> batch <span class="kw">in</span> <span class="var">val_dl</span>:
+            batch      = {k: v.to(<span class="var">DEVICE</span>) <span class="kw">for</span> k, v <span class="kw">in</span> batch.items()}
+            out        = model(**batch)
+            <span class="var">val_loss</span> += <span class="fn">clip_loss</span>(out.image_embeds, out.text_embeds, model.logit_scale).item()
+    <span class="var">val_loss</span> /= <span class="fn">len</span>(<span class="var">val_dl</span>)
+
+    <span class="var">history</span>.append({<span class="st">"epoch"</span>: epoch+<span class="num">1</span>, <span class="st">"train"</span>: <span class="var">train_loss</span>, <span class="st">"val"</span>: <span class="var">val_loss</span>})
+    <span class="fn">print</span>(<span class="st">f"Epoch {epoch+1:02d} | train {train_loss:.4f} | val {val_loss:.4f}"</span>)
+
+    <span class="kw">if</span> <span class="var">val_loss</span> < <span class="var">best_val</span>:
+        <span class="var">best_val</span>, <span class="var">patience_count</span> = <span class="var">val_loss</span>, <span class="num">0</span>
+        model.save_pretrained(<span class="var">MODEL_DIR</span>)
+        <span class="var">processor</span>.save_pretrained(<span class="var">MODEL_DIR</span>)
+        <span class="fn">print</span>(<span class="st">f"  ✓ Saved best model (val={best_val:.4f})"</span>)
+    <span class="kw">else</span>:
+        <span class="var">patience_count</span> += <span class="num">1</span>
+        <span class="fn">print</span>(<span class="st">f"  patience {patience_count}/{CFG['patience']}"</span>)
+        <span class="kw">if</span> <span class="var">patience_count</span> >= <span class="var">CFG</span>[<span class="st">"patience"</span>]:
+            <span class="fn">print</span>(<span class="st">"Early stopping"</span>); <span class="kw">break</span>
+
+<span class="fn">print</span>(<span class="st">f"\n✅ Best val loss: {best_val:.4f}"</span>)</div>
+  </div>
+
+  <!-- CELL 8 -->
+  <div class="section-title">evaluation</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">8</span> Recall@K evaluation</div>
+    <div class="cell-body"><span class="var">model_eval</span> = CLIPModel.from_pretrained(<span class="var">MODEL_DIR</span>).to(<span class="var">DEVICE</span>).eval()
+<span class="var">processor</span>  = CLIPProcessor.from_pretrained(<span class="var">MODEL_DIR</span>)
+
+<span class="var">img_embs</span>, <span class="var">txt_embs</span> = [], []
+<span class="kw">with</span> torch.no_grad():
+    <span class="kw">for</span> batch <span class="kw">in</span> <span class="var">val_dl</span>:
+        batch = {k: v.to(<span class="var">DEVICE</span>) <span class="kw">for</span> k, v <span class="kw">in</span> batch.items()}
+        out   = <span class="var">model_eval</span>(**batch)
+        <span class="var">img_embs</span>.append(nn.functional.normalize(out.image_embeds, dim=-<span class="num">1</span>).cpu())
+        <span class="var">txt_embs</span>.append(nn.functional.normalize(out.text_embeds,  dim=-<span class="num">1</span>).cpu())
+
+<span class="var">img_embs</span> = torch.cat(<span class="var">img_embs</span>)
+<span class="var">txt_embs</span> = torch.cat(<span class="var">txt_embs</span>)
+<span class="var">sims</span>     = <span class="var">txt_embs</span> @ <span class="var">img_embs</span>.T
+
+<span class="kw">def</span> <span class="fn">recall_at_k</span>(sims, k):
+    topk    = sims.topk(k, dim=<span class="num">1</span>).indices
+    correct = (topk == torch.arange(<span class="fn">len</span>(sims)).unsqueeze(<span class="num">1</span>)).any(dim=<span class="num">1</span>)
+    <span class="kw">return</span> correct.float().mean().item()
+
+<span class="fn">print</span>(<span class="st">f"Recall@1 : {recall_at_k(sims,1)*100:.1f}%"</span>)
+<span class="fn">print</span>(<span class="st">f"Recall@5 : {recall_at_k(sims,5)*100:.1f}%"</span>)
+<span class="fn">print</span>(<span class="st">f"Recall@10: {recall_at_k(sims,10)*100:.1f}%"</span>)</div>
+  </div>
+
+  <!-- CELL 9 -->
+  <div class="section-title">save weights</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">9</span> Download model to your computer <span class="cell-tag important">⚠ run immediately after cell 7</span></div>
+    <div class="cell-body"><span class="kw">from</span> google.colab <span class="kw">import</span> files
+<span class="kw">import</span> shutil
+
+shutil.make_archive(<span class="st">"/content/mercadona_model_translated"</span>, <span class="st">"zip"</span>, <span class="var">MODEL_DIR</span>)
+files.download(<span class="st">"/content/mercadona_model_translated.zip"</span>)
+<span class="fn">print</span>(<span class="st">"✅ Download started — save this zip, it contains your trained weights"</span>)</div>
+  </div>
+
+  <!-- CELL 10 -->
+  <div class="section-title">inference test</div>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">10</span> Build product embedding index from full catalog <span class="cell-tag new">for real inference</span></div>
+    <div class="cell-body"><span class="cm"># Build index over ALL products (not just val set) for real-world use</span>
+<span class="kw">from</span> deep_translator <span class="kw">import</span> GoogleTranslator
+
+<span class="kw">def</span> <span class="fn">translate_query</span>(text):
+    <span class="kw">try</span>: <span class="kw">return</span> GoogleTranslator(source=<span class="st">"es"</span>, target=<span class="st">"en"</span>).translate(text)
+    <span class="kw">except</span>: <span class="kw">return</span> text
+
+<span class="cm"># Encode all product images into an index</span>
+<span class="var">all_embs</span>, <span class="var">all_meta</span> = [], []
+<span class="var">all_ds</span>  = MercadonaDataset(<span class="var">all_items</span>, <span class="var">processor</span>, augment=<span class="kw">False</span>)
+<span class="var">all_dl</span>  = DataLoader(<span class="var">all_ds</span>, batch_size=<span class="num">64</span>, shuffle=<span class="kw">False</span>, num_workers=<span class="num">2</span>)
+
+<span class="kw">with</span> torch.no_grad():
+    <span class="kw">for</span> i, batch <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="var">all_dl</span>):
+        batch = {k: v.to(<span class="var">DEVICE</span>) <span class="kw">for</span> k, v <span class="kw">in</span> batch.items()}
+        out   = <span class="var">model_eval</span>(**batch)
+        <span class="var">all_embs</span>.append(nn.functional.normalize(out.image_embeds, dim=-<span class="num">1</span>).cpu())
+        <span class="var">all_meta</span>.extend(<span class="var">all_items</span>[i*<span class="num">64</span>:(i+<span class="num">1</span>)*<span class="num">64</span>])
+
+<span class="var">all_embs</span> = torch.cat(<span class="var">all_embs</span>)
+<span class="fn">print</span>(<span class="st">f"Index built: {len(all_embs)} products"</span>)</div>
+  </div>
+
+  <!-- CELL 11 -->
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">11</span> Query test with Spanish→English translation <span class="cell-tag new">updated</span></div>
+    <div class="cell-body"><span class="kw">for</span> query <span class="kw">in</span> [<span class="st">"leche entera"</span>, <span class="st">"aceite de oliva"</span>, <span class="st">"yogur natural"</span>, <span class="st">"pan de molde"</span>]:
+    <span class="var">translated</span> = <span class="fn">translate_query</span>(query)
+    inputs = <span class="var">processor</span>(text=[<span class="var">translated</span>], return_tensors=<span class="st">"pt"</span>, padding=<span class="kw">True</span>).to(<span class="var">DEVICE</span>)
+    <span class="kw">with</span> torch.no_grad():
+        q_emb = <span class="var">model_eval</span>.get_text_features(**inputs)
+        <span class="kw">if not</span> <span class="fn">isinstance</span>(q_emb, torch.Tensor): q_emb = q_emb.pooler_output
+        q_emb = nn.functional.normalize(q_emb, dim=-<span class="num">1</span>).cpu()
+    scores = (q_emb @ <span class="var">all_embs</span>.T).squeeze()
+    top3   = scores.topk(<span class="num">3</span>).indices.tolist()
+    <span class="fn">print</span>(<span class="st">f"\n'{query}' → '{translated}'"</span>)
+    <span class="kw">for</span> idx <span class="kw">in</span> top3:
+        item = <span class="var">all_meta</span>[idx]
+        <span class="fn">print</span>(<span class="st">f"  [{scores[idx]:.3f}] {item['name']} — {item['category']}"</span>)</div>
+  </div>
+
+  <div class="note new" style="margin-top:32px">
+    <strong>What to expect:</strong> With consistent English text during training and inference, Recall@1 should improve beyond 66.7%. The "yogur natural" → "natural yogurt" failure may persist since "natural" appears in many product names — but overall alignment should be stronger.
+  </div>
+  <div class="note warn">
+    <strong>Note on timing:</strong> Cell 2 takes ~15 min instead of ~3 min due to translation API calls (~4,600 requests). Total session time is ~75 min. Run back-to-back without stopping and download weights in cell 9 immediately after training.
+  </div>
+
+</main>
+
+<footer>
+  Mercadona CLIP Notebook v2 · Translated · <span>May 2026</span> · openai/clip-vit-base-patch32
+</footer>
+
+</body>
+</html>

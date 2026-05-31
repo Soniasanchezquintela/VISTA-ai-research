@@ -1,7 +1,9 @@
+.DS_Store
 *.pt
 vista_env/
 __pycache__/
 *.log
 *.tmp
+*.mov
 inference_results/
 runs/

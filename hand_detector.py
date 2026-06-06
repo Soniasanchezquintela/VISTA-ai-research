@@ -2,6 +2,45 @@ import mediapipe as mp
 import numpy as np
 import cv2
 
+HAND_CONNECTIONS = [
+    (0, 1), (1, 2), (2, 3), (3, 4),        # thumb
+    (0, 5), (5, 6), (6, 7), (7, 8),        # index
+    (5, 9), (9, 10), (10, 11), (11, 12),   # middle
+    (9, 13), (13, 14), (14, 15), (15, 16), # ring
+    (13, 17), (17, 18), (18, 19), (19, 20),# pinky
+    (0, 17),                               # palm
+]
+
+def draw_hand_landmarks(image_bgr, hand_landmarks):
+    height, width, _ = image_bgr.shape
+
+    points = []
+    for landmark in hand_landmarks:
+        x = int(landmark.x * width)
+        y = int(landmark.y * height)
+        points.append((x, y))
+
+    # Draw connections
+    for start_idx, end_idx in HAND_CONNECTIONS:
+        cv2.line(
+            image_bgr,
+            points[start_idx],
+            points[end_idx],
+            color=(0, 255, 0),
+            thickness=2,
+        )
+
+    # Draw landmark points
+    for x, y in points:
+        cv2.circle(
+            image_bgr,
+            (x, y),
+            radius=4,
+            color=(0, 0, 255),
+            thickness=-1,
+        )
+
+
 class HandDetector:
 
     class Mode:
@@ -9,7 +48,7 @@ class HandDetector:
         VIDEO = mp.tasks.vision.RunningMode.VIDEO
         WEBCAM = mp.tasks.vision.RunningMode.LIVE_STREAM
 
-    def __init__(self, mode: str = Mode.VIDEO):
+    def __init__(self, mode=Mode.VIDEO):
 
         # Base MediaPipe Tasks aliases
         BaseOptions = mp.tasks.BaseOptions
@@ -27,10 +66,20 @@ class HandDetector:
 
         # Initialize the detector
         self.detector = HandLandmarker.create_from_options(options)
+        self.mode = mode
 
     def __del__(self):
         if self.detector:
             self.detector.close()
+
+    def detect_from_file(self, image_path: str):
+        bgr_image = cv2.imread(image_path)
+
+        if bgr_image is None:
+            raise FileNotFoundError(f"Could not load image: {image_path}")
+
+        # Image mode does not need timestamps. For other modes, pass 0 as a safe default.
+        return self.detect(bgr_image, 0)
 
     def detect(self, frame, timestamp_ms: int):
 
@@ -50,10 +99,14 @@ class HandDetector:
         # Get current timestamp in milliseconds
         # timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))
         
-        # Run hand landmark detection
-        detection_result = self.detector.detect_for_video(mp_image, timestamp_ms)
+        # Run hand landmark detection based on configured running mode.
+        if self.mode == self.Mode.IMAGE:
+            detection_result = self.detector.detect(mp_image)
+        else:
+            detection_result = self.detector.detect_for_video(mp_image, int(timestamp_ms))
 
         if detection_result.hand_landmarks:
+            found = True
             # Get landmarks for the first detected hand
             hand_landmarks = detection_result.hand_landmarks[0]
             
@@ -86,6 +139,10 @@ class HandDetector:
 
             annotated_frame = frame.copy()
 
+            # Draw hand landmarks and connections without protobuf dependency.
+            for hand_landmarks in detection_result.hand_landmarks:
+                draw_hand_landmarks(annotated_frame, hand_landmarks)
+
             # Draw the arrowed line on the frame
             cv2.arrowedLine(annotated_frame, start_point, end_point, (0, 255, 0), 3, tipLength=0.3)
 
@@ -93,7 +150,8 @@ class HandDetector:
             cv2.putText(annotated_frame, f"Dir: [{dx:.2f}, {dy:.2f}]", 
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         else:
-            print("No hand detected in this frame.")
+            #print("No hand detected in this frame.")
+            pass
         
         return found, start_point, direction, annotated_frame
     

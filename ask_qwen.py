@@ -12,7 +12,9 @@ def resize_for_vlm(input_path: str, output_path: str, max_side: int = 768) -> No
 def ask_qwen_image(
     image_path: str,
     prompt: str,
-    model: str = "qwen2.5vl:3b",
+    #model: str = "qwen2.5vl:3b",
+    #model: str = "gemma4:e2b"
+    model: str = "gemma3:4b"
 ) -> str:
     response = chat(
         model=model,

@@ -7,3 +7,5 @@ __pycache__/
 *.mov
 inference_results/
 runs/
+hand_landmarker.task
+

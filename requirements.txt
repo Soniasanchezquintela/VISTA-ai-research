@@ -1,3 +1,4 @@
+numpy
 torch
 ultralytics
 opencv-python
@@ -6,3 +7,9 @@ mediapipe
 ollama
 pyttsx3
 faster-whisper
+open_clip_torch
+pandas
+playwright
+requests
+beautifulsoup4
+transformers

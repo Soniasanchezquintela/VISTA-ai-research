@@ -4,15 +4,63 @@ from object_detector import ObjectDetector
 import cv2
 from hand_detector import HandDetector
 
-def process_image(image_path: str, save: bool = False) -> int:
+def process_image(image_path: str, save: bool = False, extract_boxes: bool = False) -> int:
     detector = ObjectDetector()
-    boxes, annotated_image = detector.detect_from_file(image_path)
+    image = cv2.imread(str(image_path))
+    boxes, annotated_image = detector.detect_from_frame(image)
+
+    #hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
+    found = False
+    #found, _, _, hand_annotated_image = hand_detector.detect_from_file(image_path)
+
+    preview_image = annotated_image
+    if preview_image is None:
+        preview_image = cv2.imread(image_path)
+
+    if preview_image is not None:
+        window_name = "Hand Detection"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.imshow(window_name, preview_image)
+        if found:
+            print("Hand detected in image.")
+        else:
+            print("No hand detected in image.")
+        print("Press any key to close the hand preview window.")
+        cv2.waitKey(0)
+        cv2.destroyWindow(window_name)
 
     if save:
         # Save annotated image
         output_path = Path(f"{Path(image_path).stem}_pred.jpg")
         cv2.imwrite(str(output_path), annotated_image)
         print(f"Saved annotated image to: {output_path}")
+
+    if extract_boxes:
+        # Save bounding boxes one by one to a new image file
+        
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+
+            # Convert to int
+            x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+
+            # Optional but recommended: clamp coordinates to image size
+            h, w = image.shape[:2]
+            x1 = max(0, min(x1, w))
+            x2 = max(0, min(x2, w))
+            y1 = max(0, min(y1, h))
+            y2 = max(0, min(y2, h))
+
+            crop = image[y1:y2, x1:x2]
+
+            if crop.size == 0:
+                print(f"Skipping empty crop for box {i}: {(x1, y1, x2, y2)}")
+                continue
+
+            output_path = Path(f"{Path(image_path).stem}_box_{i}.jpg")
+            cv2.imwrite(str(output_path), crop)
+
+            print(f"Saved bounding box {i} to: {output_path}")       
 
     return 0
 
@@ -106,6 +154,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--extract-boxes",
+        action="store_true",
+        help="Extract bounding boxes from the image.",
+    )
+
+    parser.add_argument(
         "--video",
         required=False,
         help="Path to input video, for example /path/to/video.mp4",
@@ -138,7 +192,7 @@ def main():
         exit(1)
 
     if args.image:
-        exit(process_image(args.image, save=args.save))
+        exit(process_image(args.image, save=args.save, extract_boxes=args.extract_boxes))
 
     if args.video:
         exit(process_video(args.video, save=args.save))

@@ -1,8 +1,15 @@
+numpy
 torch
+transformers
 ultralytics
 opencv-python
 Pillow
 mediapipe
+matplotlib
 ollama
 pyttsx3
 faster-whisper
+open_clip_torch
+pandas
+playwright
+PyYAML

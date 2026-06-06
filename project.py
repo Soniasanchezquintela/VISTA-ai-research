@@ -4,6 +4,38 @@ from object_detector import ObjectDetector
 import cv2
 from hand_detector import HandDetector
 
+"""
+def handle_user_command(text: str) -> None:
+    result = intent_classifier.predict(text)
+
+    if result.intent == Intent.DESCRIBE_SCENE:
+        describe_scene()
+
+    elif result.intent == Intent.DESCRIBE_POINTED_PRODUCT:
+        describe_pointed_product()
+
+    elif result.intent == Intent.NAVIGATE_TO_TARGET:
+        if result.target is None:
+            ask_user_for_target()
+        else:
+            navigate_to_target(result.target)
+
+    elif result.intent == Intent.CONFIRM_TARGET_PRESENT:
+        if result.target is None:
+            ask_user_for_target()
+        else:
+            confirm_target_present(result.target)
+
+    elif result.intent == Intent.GET_PRICE:
+        get_price_of_pointed_product()
+
+    elif result.intent == Intent.READ_TEXT:
+        read_visible_text()
+
+    else:
+        say("Sorry, I did not understand.")
+"""
+
 def process_image(image_path: str, save: bool = False, extract_boxes: bool = False) -> int:
     detector = ObjectDetector()
     image = cv2.imread(str(image_path))

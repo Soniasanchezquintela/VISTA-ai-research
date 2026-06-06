@@ -1,0 +1,201 @@
+text,intent,target
+"Where is the milk?",navigate_to_target,milk
+"Help me find sugar",navigate_to_target,sugar
+"I am looking for oat milk",navigate_to_target,plant_based_milk
+"Describe what is in front of me",describe_scene,
+"What products are here?",describe_scene,
+"What am I pointing at?",describe_pointed_product,
+"Describe this product",describe_pointed_product,
+"How much is this?",get_price,
+"What is the price?",get_price,
+"Read the label",read_text,
+"Is this the milk section?",confirm_target_present,milk
+"Do you see coffee here?",confirm_target_present,coffee
+"Where is the bread?",navigate_to_target,bread
+"Help me find eggs",navigate_to_target,eggs
+"I am looking for orange juice",navigate_to_target,orange_juice
+"I like this shop",unknown,
+"This is difficult",unknown,
+"Can you help me?",unknown,
+"What should I buy?",unknown,
+"Where can I find cereal?",navigate_to_target,cereal
+"Help me find pasta",navigate_to_target,pasta
+"I need rice",navigate_to_target,rice
+"Take me to the coffee",navigate_to_target,coffee
+"Show me the tea",navigate_to_target,tea
+"Where is the flour?",navigate_to_target,flour
+"I am looking for crackers",navigate_to_target,crackers
+"Can you find biscuits?",navigate_to_target,biscuits
+"Where are the cookies?",navigate_to_target,cookies
+"Help me get chocolate",navigate_to_target,chocolate
+"I want to find juice",navigate_to_target,juice
+"Where can I get drinks?",navigate_to_target,drinks
+"Please find soup",navigate_to_target,soup
+"Take me to broth",navigate_to_target,broth
+"Show me tomato sauce",navigate_to_target,tomato_sauce
+"I am looking for cereal bars",navigate_to_target,cereal_bars
+"Where are the snack bars?",navigate_to_target,snack_bars
+"Help me find oats",navigate_to_target,oats
+"Can you show me noodles?",navigate_to_target,noodles
+"Where is couscous?",navigate_to_target,couscous
+"I need salt",navigate_to_target,salt
+"Help me find tea bags",navigate_to_target,tea
+"Where can I find cocoa powder?",navigate_to_target,cocoa
+"I am looking for breakfast cereal",navigate_to_target,cereal
+"Take me to the sugar",navigate_to_target,sugar
+"Show me the milk",navigate_to_target,milk
+"Can you find coffee for me?",navigate_to_target,coffee
+"Where are the boxed drinks?",navigate_to_target,drinks
+"Help me find cake mix",navigate_to_target,cake_mix
+"I need crackers",navigate_to_target,crackers
+"What is in front of me?",describe_scene,
+"Tell me what you see",describe_scene,
+"Describe the products ahead",describe_scene,
+"Can you describe this view?",describe_scene,
+"What is on the shelf?",describe_scene,
+"Tell me about this shelf",describe_scene,
+"What can you see here?",describe_scene,
+"Describe this area",describe_scene,
+"Give me a quick scene description",describe_scene,
+"What items are visible?",describe_scene,
+"Look around and describe it",describe_scene,
+"What is around me?",describe_scene,
+"Describe the shelf contents",describe_scene,
+"Tell me what products are nearby",describe_scene,
+"What is displayed here?",describe_scene,
+"Can you describe the front view?",describe_scene,
+"What do the shelves contain?",describe_scene,
+"Describe what is visible",describe_scene,
+"What products can you identify?",describe_scene,
+"Tell me what is ahead",describe_scene,
+"What is this product?",describe_pointed_product,
+"Tell me about the product I am pointing at",describe_pointed_product,
+"Describe the item in my hand",describe_pointed_product,
+"What am I pointing to?",describe_pointed_product,
+"Can you identify this product?",describe_pointed_product,
+"Describe the product in front of my finger",describe_pointed_product,
+"What is this item?",describe_pointed_product,
+"Tell me what this is",describe_pointed_product,
+"Can you describe this item?",describe_pointed_product,
+"What product is under my finger?",describe_pointed_product,
+"Identify the product I selected",describe_pointed_product,
+"Describe the pointed item",describe_pointed_product,
+"What is the product I selected?",describe_pointed_product,
+"Tell me about this box",describe_pointed_product,
+"Describe this package",describe_pointed_product,
+"I am just browsing",unknown,
+"Never mind",unknown,
+"That is not what I meant",unknown,
+"I do not know",unknown,
+"Maybe later",unknown,
+"This looks nice",unknown,
+"I changed my mind",unknown,
+"Wait a moment",unknown,
+"No thanks",unknown,
+"I am tired",unknown,
+"That one looks good",unknown,
+"Let me think",unknown,
+"I am not sure",unknown,
+"Forget it",unknown,
+"This is fine",unknown,
+"Continue",unknown,
+"¿Dónde está la leche?",navigate_to_target,milk
+"Ayúdame a encontrar el azúcar",navigate_to_target,sugar
+"Estoy buscando leche vegetal",navigate_to_target,plant_based_milk
+"Descríbeme lo que tengo delante",describe_scene,
+"¿Qué productos hay aquí?",describe_scene,
+"¿Qué estoy señalando?",describe_pointed_product,
+"Descríbeme este producto",describe_pointed_product,
+"¿Cuánto cuesta esto?",get_price,
+"¿Cuál es el precio?",get_price,
+"Lee la etiqueta",read_text,
+"¿Esta es la zona de la leche?",confirm_target_present,milk
+"¿Ves café por aquí?",confirm_target_present,coffee
+"¿Dónde está el pan?",navigate_to_target,bread
+"Ayúdame a encontrar huevos",navigate_to_target,eggs
+"Estoy buscando zumo de naranja",navigate_to_target,orange_juice
+"Me gusta esta tienda",unknown,
+"Esto es complicado",unknown,
+"¿Me puedes ayudar?",unknown,
+"¿Qué debería comprar?",unknown,
+"¿Dónde puedo encontrar cereales?",navigate_to_target,cereal
+"Ayúdame a encontrar pasta",navigate_to_target,pasta
+"Necesito arroz",navigate_to_target,rice
+"Llévame al café",navigate_to_target,coffee
+"Enséñame el té",navigate_to_target,tea
+"¿Dónde está la harina?",navigate_to_target,flour
+"Estoy buscando galletas saladas",navigate_to_target,crackers
+"¿Puedes encontrar galletas?",navigate_to_target,biscuits
+"¿Dónde están las galletas dulces?",navigate_to_target,cookies
+"Ayúdame a encontrar chocolate",navigate_to_target,chocolate
+"Quiero encontrar zumo",navigate_to_target,juice
+"¿Dónde puedo coger bebidas?",navigate_to_target,drinks
+"Busca sopa, por favor",navigate_to_target,soup
+"Llévame al caldo",navigate_to_target,broth
+"Enséñame la salsa de tomate",navigate_to_target,tomato_sauce
+"Estoy buscando barritas de cereales",navigate_to_target,cereal_bars
+"¿Dónde están las barritas?",navigate_to_target,snack_bars
+"Ayúdame a encontrar avena",navigate_to_target,oats
+"¿Me puedes enseñar los fideos?",navigate_to_target,noodles
+"¿Dónde está el cuscús?",navigate_to_target,couscous
+"Necesito sal",navigate_to_target,salt
+"Ayúdame a encontrar bolsitas de té",navigate_to_target,tea
+"¿Dónde puedo encontrar cacao en polvo?",navigate_to_target,cocoa
+"Estoy buscando cereales de desayuno",navigate_to_target,cereal
+"Llévame al azúcar",navigate_to_target,sugar
+"Enséñame la leche",navigate_to_target,milk
+"¿Puedes encontrar café para mí?",navigate_to_target,coffee
+"¿Dónde están las bebidas en caja?",navigate_to_target,drinks
+"Ayúdame a encontrar preparado para bizcocho",navigate_to_target,cake_mix
+"Necesito galletas saladas",navigate_to_target,crackers
+"¿Qué tengo delante?",describe_scene,
+"Dime qué ves",describe_scene,
+"Describe los productos que hay enfrente",describe_scene,
+"¿Puedes describir lo que se ve?",describe_scene,
+"¿Qué hay en la estantería?",describe_scene,
+"Háblame de esta estantería",describe_scene,
+"¿Qué puedes ver aquí?",describe_scene,
+"Describe esta zona",describe_scene,
+"Hazme una descripción rápida de la escena",describe_scene,
+"¿Qué artículos se ven?",describe_scene,
+"Mira alrededor y descríbelo",describe_scene,
+"¿Qué hay a mi alrededor?",describe_scene,
+"Describe lo que hay en la estantería",describe_scene,
+"Dime qué productos hay cerca",describe_scene,
+"¿Qué hay expuesto aquí?",describe_scene,
+"¿Puedes describir lo que hay delante?",describe_scene,
+"¿Qué contienen las estanterías?",describe_scene,
+"Describe lo que se ve",describe_scene,
+"¿Qué productos puedes identificar?",describe_scene,
+"Dime qué hay delante",describe_scene,
+"¿Qué producto es este?",describe_pointed_product,
+"Háblame del producto que estoy señalando",describe_pointed_product,
+"Describe el artículo que tengo en la mano",describe_pointed_product,
+"¿A qué estoy apuntando?",describe_pointed_product,
+"¿Puedes identificar este producto?",describe_pointed_product,
+"Describe el producto que está delante de mi dedo",describe_pointed_product,
+"¿Qué es este artículo?",describe_pointed_product,
+"Dime qué es esto",describe_pointed_product,
+"¿Puedes describir este artículo?",describe_pointed_product,
+"¿Qué producto está bajo mi dedo?",describe_pointed_product,
+"Identifica el producto que he elegido",describe_pointed_product,
+"Describe el artículo señalado",describe_pointed_product,
+"¿Cuál es el producto que he elegido?",describe_pointed_product,
+"Háblame de esta caja",describe_pointed_product,
+"Describe este paquete",describe_pointed_product,
+"Solo estoy mirando",unknown,
+"Da igual",unknown,
+"Eso no era lo que quería decir",unknown,
+"No lo sé",unknown,
+"Quizá luego",unknown,
+"Esto tiene buena pinta",unknown,
+"He cambiado de opinión",unknown,
+"Espera un momento",unknown,
+"No, gracias",unknown,
+"Estoy cansado",unknown,
+"Ese parece estar bien",unknown,
+"Déjame pensarlo",unknown,
+"No estoy seguro",unknown,
+"Olvídalo",unknown,
+"Esto está bien",unknown,
+"Continúa",unknown,

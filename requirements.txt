@@ -1,9 +1,11 @@
 numpy
 torch
+transformers
 ultralytics
 opencv-python
 Pillow
 mediapipe
+matplotlib
 ollama
 pyttsx3
 faster-whisper
@@ -13,3 +15,4 @@ playwright
 requests
 beautifulsoup4
 transformers
+PyYAML

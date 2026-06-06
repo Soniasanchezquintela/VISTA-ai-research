@@ -1,0 +1,15 @@
+data: data/intents.csv
+output: checkpoints/intent_classifier.pt
+metrics_figure: checkpoints/training_metrics.png
+model_name: distilbert-base-multilingual-cased
+epochs: 8
+batch_size: 8
+learning_rate: 2.0e-5
+weight_decay: 0.01
+max_length: 64
+hidden_size: 256
+dropout: 0.2
+validation_split: 0.2
+seed: 42
+device:
+freeze_encoder: false

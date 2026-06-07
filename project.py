@@ -38,6 +38,22 @@ def handle_user_command(text: str) -> None:
 """
 
 
+def is_window_open(window_name: str) -> bool:
+    try:
+        return cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1
+    except cv2.error:
+        return False
+
+
+def close_window_if_open(window_name: str) -> None:
+    if not is_window_open(window_name):
+        return
+    try:
+        cv2.destroyWindow(window_name)
+    except cv2.error:
+        pass
+
+
 def annotate_box(frame, boxes, index: int, color):
     annotated_frame = frame
     frame_height, frame_width = annotated_frame.shape[:2]
@@ -90,7 +106,7 @@ def execute_pipeline(frame, object_detector, hand_detector):
     boxes, annotated_frame = object_detector.detect_from_frame(frame)
 
     # Run hand detection
-    found, start_point, direction, hand_annotated_frame = hand_detector.detect(frame)
+    found, start_point, direction, hand_annotated_frame = hand_detector.detect_from_frame(frame)
 
     # Combine annotations if both detections are successful
     if annotated_frame is not None and hand_annotated_frame is not None:
@@ -111,15 +127,15 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
 
     boxes, _ = detector.detect_from_frame(image)
 
-    #hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
+    hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
     found = False
-    #found, _, _, hand_annotated_image = hand_detector.detect_from_file(image_path)
+    found, _, _, hand_annotated_image = hand_detector.detect_from_frame(image)
     object_identifier = ObjectIdentifier()
 
-
     preview_image = image.copy()
-
    
+    print("Hand detected in image." if found else "No hand detected in image.")
+ 
     for i, box in enumerate(boxes):
         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
 
@@ -147,33 +163,33 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
         description = product.get("description", "unknown")
         category = product.get("category", "unknown")
 
+        color = (0, 255, 0) if result_identification["score"] >= ObjectIdentifier.MIN_SCORE and result_identification["confidence"] >= ObjectIdentifier.MIN_CONFIDENCE else (0, 0, 255)
+        annotate_box(preview_image, boxes, i, color)
         if result_identification["score"] < ObjectIdentifier.MIN_SCORE or result_identification["confidence"] < ObjectIdentifier.MIN_CONFIDENCE:
-            annotate_box(preview_image, boxes, i, (0, 0, 255))
-            print(f"Cropped Image: {i}")
-            print("Unknown")
-            print(f"Best SKU ID: {result_identification['sku_id']}")
-            print(f"Best reference image: {result_identification['reference_image_path']}")
-            print(f"Best score: {result_identification['score']:.4f}")
-            print(f"Best confidence: {result_identification['confidence']:.4f}")
-            print("-" * 60)
+            print(f"[{i}] Unknown product")
+            # print(f"Cropped Image: {i}")
+            # print("Unknown")
+            # print(f"Best SKU ID: {result_identification['sku_id']}")
+            # print(f"Best reference image: {result_identification['reference_image_path']}")
+            # print(f"Best score: {result_identification['score']:.4f}")
+            # print(f"Best confidence: {result_identification['confidence']:.4f}")
+            # print("-" * 60)
             continue
 
-        annotate_box(preview_image, boxes, i, (0, 255, 0))
-        print(f"Cropped Image: {i}")
-        print(f"SKU ID:     {result_identification['sku_id']}")
-        print(f"Ref image:  {result_identification['reference_image_id']}")
-        print(f"Match:      {description}")
-        print(f"Category:   {category}")
-        print(f"Score:      {result_identification['score']:.4f}")
-        print(f"Confidence: {result_identification['confidence']:.4f}")
-        print("-" * 60)
+        print(f"[{i}] {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
+        # print(f"Cropped Image: {i}")
+        # print(f"SKU ID:     {result_identification['sku_id']}")
+        # print(f"Ref image:  {result_identification['reference_image_id']}")
+        # print(f"Match:      {description}")
+        # print(f"Category:   {category}")
+        # print(f"Score:      {result_identification['score']:.4f}")
+        # print(f"Confidence: {result_identification['confidence']:.4f}")
+        # print("-" * 60)
 
         if extract_boxes:
             # Save bounding boxes one by one to a new image file
-    
             output_path = Path(f"{Path(image_path).stem}_box_{i}.jpg")
             cv2.imwrite(str(output_path), crop)
-
             print(f"Saved bounding box {i} to: {output_path}")       
 
     if save:
@@ -186,14 +202,9 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
         window_name = "Hand Detection"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.imshow(window_name, preview_image)
-        if found:
-            print("Hand detected in image.")
-        else:
-            print("No hand detected in image.")
         print("Press any key to close the hand preview window.")
         cv2.waitKey(0)
-        cv2.destroyWindow(window_name)
-
+        close_window_if_open(window_name)
 
     return 0
 
@@ -225,7 +236,8 @@ def process_video(video_path: str, save: bool = False) -> int:
     print("Processing video...")
     print("Press 'q' to close the preview window.")
 
-    cv2.namedWindow("Annotated Video", cv2.WINDOW_NORMAL)
+    window_name = "Annotated Video"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     
     frame_count = 0
     
@@ -239,13 +251,14 @@ def process_video(video_path: str, save: bool = False) -> int:
         
         # Run inference on frame
         #boxes, annotated_frame = detector.detect_from_frame(frame)
-        found, start_point, direction, hand_annotated_frame = hand_detector.detect(frame, timestamp_ms=int(cap.get(cv2.CAP_PROP_POS_MSEC)))
+        found, start_point, direction, hand_annotated_frame = hand_detector.detect_from_frame(frame, timestamp_ms=int(cap.get(cv2.CAP_PROP_POS_MSEC)))
         
         if found and hand_annotated_frame is not None:
             annotated_frame = hand_annotated_frame
-            cv2.imshow("Annotated Video", annotated_frame)
+            cv2.imshow(window_name, annotated_frame)
         else:
-            cv2.imshow("Annotated Video", frame)
+            annotated_frame = frame
+            cv2.imshow(window_name, annotated_frame)
         
         # Show the frame
         #cv2.imshow("Annotated Video", annotated_frame)
@@ -253,6 +266,9 @@ def process_video(video_path: str, save: bool = False) -> int:
         # Process GUI events so the window updates and can receive key presses
         if cv2.waitKey(1) & 0xFF == ord("q"):
             print("Preview stopped by user.")
+            break
+        if not is_window_open(window_name):
+            print("Preview window closed by user.")
             break
         
         # Write frame to output video
@@ -267,7 +283,7 @@ def process_video(video_path: str, save: bool = False) -> int:
     cap.release()
     if out:
         out.release()
-    cv2.destroyAllWindows()
+    close_window_if_open(window_name)
 
     return 0
 

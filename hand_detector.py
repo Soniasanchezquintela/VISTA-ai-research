@@ -79,9 +79,9 @@ class HandDetector:
             raise FileNotFoundError(f"Could not load image: {image_path}")
 
         # Image mode does not need timestamps. For other modes, pass 0 as a safe default.
-        return self.detect(bgr_image, 0)
+        return self.detect_from_frame(bgr_image)
 
-    def detect(self, frame, timestamp_ms: int):
+    def detect_from_frame(self, frame, timestamp_ms: int = 0):
 
         found = False
         start_point = (0, 0)

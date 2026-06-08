@@ -16,3 +16,4 @@ requests
 beautifulsoup4
 transformers
 PyYAML
+openwakeword

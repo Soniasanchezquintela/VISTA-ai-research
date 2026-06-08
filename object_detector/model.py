@@ -2,7 +2,9 @@ from pathlib import Path
 from ultralytics import YOLO
 
 # Paths
-DEFAULT_MODEL_PATH = "sku110k_768_e20_pat5.pt"
+
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_MODEL_PATH = BASE_DIR / "sku110k_768_e20_pat5.pt"
 
 # Inference parameters
 IMG_SIZE = 768          # use the same size you trained with, if possible

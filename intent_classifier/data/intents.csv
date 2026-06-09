@@ -199,5 +199,5 @@ text,intent,target
 "Olvídalo",unknown,
 "Esto está bien",unknown,
 "Continúa",unknown,
-"¿Este producto tiene alguna etiqueta de descuento?"
-"¿Este producto informa sobre si es libre de gluten o gluten free?"
+"¿Este producto tiene alguna etiqueta de descuento?",describe_pointed_product,
+"¿Este producto informa sobre si es libre de gluten o gluten free?",describe_pointed_product,

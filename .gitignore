@@ -5,6 +5,7 @@ __pycache__/
 *.log
 *.tmp
 *.mov
+*.mp4
 inference_results/
 runs/
 hand_landmarker.task

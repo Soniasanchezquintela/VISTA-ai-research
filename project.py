@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 from pathlib import Path
 import argparse
+import shutil
+import subprocess
 import sys
 
 from object_detector import ObjectDetector
@@ -221,6 +223,47 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
 
     return 0
 
+
+def convert_video_for_mobile_sharing(input_path: Path, output_path: Path) -> bool:
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path is None:
+        print("ffmpeg not found; saved the OpenCV MP4 without WhatsApp compatibility conversion.")
+        return False
+
+    command = [
+        ffmpeg_path,
+        "-y",
+        "-i",
+        str(input_path),
+        "-an",
+        "-vf",
+        "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        "-tag:v",
+        "avc1",
+        str(output_path),
+    ]
+
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as exc:
+        print("ffmpeg could not create a WhatsApp-compatible MP4.")
+        if exc.stderr:
+            print(exc.stderr.strip())
+        return False
+
+    return True
+
+
 def process_video(video_path: str, save: bool = False) -> int:
     # Open video file
     cap = cv2.VideoCapture(video_path)
@@ -234,6 +277,8 @@ def process_video(video_path: str, save: bool = False) -> int:
    
     # Get video properties
     fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0:
+        fps = 30
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -242,8 +287,12 @@ def process_video(video_path: str, save: bool = False) -> int:
     out = None
     if save:
         output_path = Path(f"{Path(video_path).stem}_pred.mp4")
+        raw_output_path = Path(f"{Path(video_path).stem}_pred_opencv.mp4")
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+        out = cv2.VideoWriter(str(raw_output_path), fourcc, fps, (width, height))
+        if not out.isOpened():
+            cap.release()
+            raise ValueError(f"Cannot create output video file: {raw_output_path}")
     
     print(f"Video: {Path(video_path).name}")
     print(f"FPS: {fps}, Resolution: {width}x{height}, Total frames: {total_frames}")
@@ -289,6 +338,12 @@ def process_video(video_path: str, save: bool = False) -> int:
     cap.release()
     if out:
         out.release()
+        if convert_video_for_mobile_sharing(raw_output_path, output_path):
+            raw_output_path.unlink(missing_ok=True)
+            print(f"Saved WhatsApp-compatible annotated video to: {output_path}")
+        else:
+            raw_output_path.replace(output_path)
+            print(f"Saved annotated video to: {output_path}")
     close_window_if_open(window_name)
 
     return 0

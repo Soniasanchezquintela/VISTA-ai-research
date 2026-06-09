@@ -137,41 +137,18 @@ def annotate_box(frame, boxes, index: int, color):
     return annotated_frame
 
 
-def execute_pipeline(frame, object_detector, hand_detector):
+def execute_pipeline(frame, object_detector, hand_detector, object_identifier, timestamp_ms=0):
     # Run object detection
-    boxes, annotated_frame = object_detector.detect_from_frame(frame)
+    boxes, _ = object_detector.detect_from_frame(frame)
 
     # Run hand detection
-    found, start_point, direction, hand_annotated_frame = hand_detector.detect_from_frame(frame)
+    found, start_point, direction, hand_annotated_frame = hand_detector.detect_from_frame(frame, timestamp_ms=timestamp_ms)
 
-    # Combine annotations if both detections are successful
-    if annotated_frame is not None and hand_annotated_frame is not None:
-        combined_frame = cv2.addWeighted(annotated_frame, 0.5, hand_annotated_frame, 0.5, 0)
-        return combined_frame
-    elif annotated_frame is not None:
-        return annotated_frame
-    elif hand_annotated_frame is not None:
-        return hand_annotated_frame
-    else:
-        return frame
-
-def process_image(image_path: str, save: bool = False, extract_boxes: bool = False) -> int:
-    detector = ObjectDetector()
-    image = cv2.imread(str(image_path))
-    if image is None:
-        raise ValueError(f"Cannot open image file: {image_path}")
-
-    boxes, _ = detector.detect_from_frame(image)
-
-    hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
-    found = False
-    found, _, _, hand_annotated_image = hand_detector.detect_from_frame(image)
-    object_identifier = ObjectIdentifier()
-
-    preview_image = image.copy()
+    preview_image = frame.copy()
    
     print("Hand detected in image." if found else "No hand detected in image.")
  
+    cropped_images = []
     for i, box in enumerate(boxes):
         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
 
@@ -179,17 +156,19 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
         x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
 
         # Optional but recommended: clamp coordinates to image size
-        h, w = image.shape[:2]
+        h, w = frame.shape[:2]
         x1 = max(0, min(x1, w))
         x2 = max(0, min(x2, w))
         y1 = max(0, min(y1, h))
         y2 = max(0, min(y2, h))
 
-        crop = image[y1:y2, x1:x2]
+        crop = frame[y1:y2, x1:x2]
 
         if crop.size == 0:
             print(f"Skipping empty crop for box {i}: {(x1, y1, x2, y2)}")
             continue
+
+        cropped_images.append(crop)
 
         # send cropped image to object identifier
         result_identification = object_identifier.identify_product(crop)
@@ -203,26 +182,26 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
         annotate_box(preview_image, boxes, i, color)
         if result_identification["score"] < ObjectIdentifier.MIN_SCORE or result_identification["confidence"] < ObjectIdentifier.MIN_CONFIDENCE:
             print(f"[{i}] Unknown product")
-            # print(f"Cropped Image: {i}")
-            # print("Unknown")
-            # print(f"Best SKU ID: {result_identification['sku_id']}")
-            # print(f"Best reference image: {result_identification['reference_image_path']}")
-            # print(f"Best score: {result_identification['score']:.4f}")
-            # print(f"Best confidence: {result_identification['confidence']:.4f}")
-            # print("-" * 60)
             continue
 
         print(f"[{i}] {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
-        # print(f"Cropped Image: {i}")
-        # print(f"SKU ID:     {result_identification['sku_id']}")
-        # print(f"Ref image:  {result_identification['reference_image_id']}")
-        # print(f"Match:      {description}")
-        # print(f"Category:   {category}")
-        # print(f"Score:      {result_identification['score']:.4f}")
-        # print(f"Confidence: {result_identification['confidence']:.4f}")
-        # print("-" * 60)
 
-        if extract_boxes:
+    return preview_image, cropped_images
+
+
+def process_image(image_path: str, save: bool = False, extract_boxes: bool = False) -> int:
+    image = cv2.imread(str(image_path))
+    if image is None:
+        raise ValueError(f"Cannot open image file: {image_path}")
+
+    detector = ObjectDetector()
+    hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
+    object_identifier = ObjectIdentifier()
+
+    preview_image, cropped_images = execute_pipeline(image, detector, hand_detector, object_identifier)
+ 
+    if extract_boxes:
+        for i, crop in enumerate(cropped_images):
             # Save bounding boxes one by one to a new image file
             output_path = Path(f"{Path(image_path).stem}_box_{i}.jpg")
             cv2.imwrite(str(output_path), crop)
@@ -234,25 +213,25 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
         cv2.imwrite(str(output_path), preview_image)
         print(f"Saved annotated image to: {output_path}")
 
-    if preview_image is not None:
-        window_name = "Product Detection"
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.imshow(window_name, preview_image)
-        print("Press any key to close the preview window.")
-        wait_for_preview_close(window_name)
+    window_name = "Product Detection"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.imshow(window_name, preview_image)
+    print("Press any key to close the preview window.")
+    wait_for_preview_close(window_name)
 
     return 0
 
 def process_video(video_path: str, save: bool = False) -> int:
-    detector = ObjectDetector()
-    hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
-
     # Open video file
     cap = cv2.VideoCapture(video_path)
-    
     if not cap.isOpened():
         raise ValueError(f"Cannot open video file: {video_path}")
-    
+
+    detector = ObjectDetector()
+    hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
+    object_identifier = ObjectIdentifier()
+
+   
     # Get video properties
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -278,26 +257,18 @@ def process_video(video_path: str, save: bool = False) -> int:
     
     while True:
         ret, frame = cap.read()
-        
         if not ret:
             break
-        
+      
         frame_count += 1
         
         # Run inference on frame
-        #boxes, annotated_frame = detector.detect_from_frame(frame)
-        found, start_point, direction, hand_annotated_frame = hand_detector.detect_from_frame(frame, timestamp_ms=int(cap.get(cv2.CAP_PROP_POS_MSEC)))
-        
-        if found and hand_annotated_frame is not None:
-            annotated_frame = hand_annotated_frame
-            cv2.imshow(window_name, annotated_frame)
-        else:
-            annotated_frame = frame
-            cv2.imshow(window_name, annotated_frame)
-        
-        # Show the frame
-        #cv2.imshow("Annotated Video", annotated_frame)
+        timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))
+        preview_image, cropped_images = execute_pipeline(frame, detector, hand_detector, object_identifier, timestamp_ms)
 
+        # Display annotated frame
+        cv2.imshow(window_name, preview_image)
+        
         # Process GUI events so the window updates and can receive key presses
         if cv2.waitKey(1) & 0xFF == ord("q"):
             print("Preview stopped by user.")
@@ -308,7 +279,7 @@ def process_video(video_path: str, save: bool = False) -> int:
         
         # Write frame to output video
         if save and out:
-            out.write(annotated_frame)
+            out.write(preview_image)
         
         # Print progress
         if frame_count % 30 == 0:

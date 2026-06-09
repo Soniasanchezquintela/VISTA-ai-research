@@ -30,9 +30,15 @@
     "embedding_index": 4
   },
   {
+    "image_id": "yosoy_avena_250ml_001",
+    "sku_id": "yosoy_avena_250ml",
+    "image_path": "product_db/images/yosoy_avena_250ml_001.jpg",
+    "embedding_index": 5
+  },
+  {
     "image_id": "yosoy_avena_ecologico_1l_001",
     "sku_id": "yosoy_avena_ecologico_1l",
     "image_path": "product_db/images/yosoy_avena_ecologico_1l_001.jpg",
-    "embedding_index": 5
+    "embedding_index": 6
   }
 ]

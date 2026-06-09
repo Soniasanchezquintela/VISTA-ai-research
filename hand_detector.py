@@ -72,6 +72,21 @@ class HandDetector:
         if self.detector:
             self.detector.close()
 
+    def get_touch_point(self, hand_landmarks, image_width, image_height):
+        fingertip_ids = [8, 12, 16]  # index, middle, ring
+
+        points = []
+        for idx in fingertip_ids:
+            lm = hand_landmarks[idx]
+            x = int(lm.x * image_width)
+            y = int(lm.y * image_height)
+            points.append((x, y))
+
+        touch_x = int(sum(p[0] for p in points) / len(points))
+        touch_y = int(sum(p[1] for p in points) / len(points))
+
+        return touch_x, touch_y
+
     def detect_from_file(self, image_path: str):
         bgr_image = cv2.imread(image_path)
 
@@ -81,11 +96,10 @@ class HandDetector:
         # Image mode does not need timestamps. For other modes, pass 0 as a safe default.
         return self.detect_from_frame(bgr_image)
 
-    def detect_from_frame(self, frame, timestamp_ms: int = 0):
+    def detect_from_frame(self, frame, timestamp_ms: int = 0) -> tuple[bool, tuple[int, int], np.ndarray | None]:
 
         found = False
-        start_point = (0, 0)
-        direction = np.array([0, 0, 0])
+        touch_point = (0, 0)
         annotated_frame = None
         height, width, _ = frame.shape
 
@@ -109,33 +123,9 @@ class HandDetector:
             found = True
             # Get landmarks for the first detected hand
             hand_landmarks = detection_result.hand_landmarks[0]
-            
-            # In MediaPipe Tasks, landmarks are indices: 
-            # Index 5 = INDEX_FINGER_MCP (Knuckle base)
-            # Index 8 = INDEX_FINGER_TIP
-            base_lm = hand_landmarks[5]
-            tip_lm = hand_landmarks[8]
-
-            # Calculate 3D direction vector (Tip - Base)
-            vector = np.array([tip_lm.x - base_lm.x, tip_lm.y - base_lm.y, tip_lm.z - base_lm.z])
-            magnitude = np.linalg.norm(vector)
-            
-            if magnitude > 0:
-                direction = vector / magnitude
-            else:
-                direction = np.array([0, 0, 0])
-
-            # Convert normalized tip coordinates to pixel coordinates
-            start_point = (int(tip_lm.x * width), int(tip_lm.y * height))
-
-            # Project the 2D direction components to calculate the arrow endpoint
-            arrow_length = 100
-            dx, dy = direction[0], direction[1]
-            
-            end_point = (
-                int(start_point[0] + dx * arrow_length),
-                int(start_point[1] + dy * arrow_length)
-            )
+    
+            # Get touch point (average of index, middle, ring fingertips)
+            touch_point = self.get_touch_point(hand_landmarks, width, height)
 
             annotated_frame = frame.copy()
 
@@ -143,15 +133,18 @@ class HandDetector:
             for hand_landmarks in detection_result.hand_landmarks:
                 draw_hand_landmarks(annotated_frame, hand_landmarks)
 
+            # Draw a blue circle at the touch point for visualization
+            cv2.circle(annotated_frame, touch_point, radius=10, color=(255, 0, 0), thickness=-1)
+
             # Draw the arrowed line on the frame
-            cv2.arrowedLine(annotated_frame, start_point, end_point, (0, 255, 0), 3, tipLength=0.3)
+            #cv2.arrowedLine(annotated_frame, start_point, end_point, (0, 255, 0), 3, tipLength=0.3)
 
             # Display raw vector numbers on screen for debugging
-            cv2.putText(annotated_frame, f"Dir: [{dx:.2f}, {dy:.2f}]", 
-                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            #cv2.putText(annotated_frame, f"Dir: [{dx:.2f}, {dy:.2f}]", 
+            #            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         else:
             #print("No hand detected in this frame.")
             pass
         
-        return found, start_point, direction, annotated_frame
+        return found, touch_point, annotated_frame
     

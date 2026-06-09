@@ -138,21 +138,84 @@ def annotate_box(frame, boxes, index: int, color):
 
     return annotated_frame
 
+def accept_identification(score: float, confidence: float) -> bool:
+    if confidence >= 0.90:
+        return score >= 0.60
+
+    if confidence >= 0.75:
+        return score >= ObjectIdentifier.MIN_SCORE
+
+    return False
+
+def box_xyxy(box) -> tuple[float, float, float, float]:
+    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+    return x1, y1, x2, y2
+
+def box_midpoint(box) -> tuple[float, float]:
+    x1, y1, x2, y2 = box_xyxy(box)
+    return ((x1 + x2) / 2, (y1 + y2) / 2)
+
+def box_area(box) -> float:
+    x1, y1, x2, y2 = box_xyxy(box)
+    return max(0, x2 - x1) * max(0, y2 - y1)
+
+def box_contains_point(px, py, box) -> bool:
+    x1, y1, x2, y2 = box_xyxy(box)
+    return x1 <= px <= x2 and y1 <= py <= y2
+
+def point_to_box_distance(px, py, box):
+    x1, y1, x2, y2 = box_xyxy(box)
+
+    dx = max(x1 - px, 0, px - x2)
+    dy = max(y1 - py, 0, py - y2)
+
+    return (dx * dx + dy * dy) ** 0.5
+
+def select_touched_box(touch_point, boxes, max_distance_px):
+    px, py = touch_point
+
+    containing_boxes = [box for box in boxes if box_contains_point(px, py, box)]
+    if containing_boxes:
+        return min(containing_boxes, key=box_area)
+
+    best_box = None
+    best_distance = float("inf")
+
+    for box in boxes:
+        distance = point_to_box_distance(px, py, box)
+
+        if distance < best_distance:
+            best_distance = distance
+            best_box = box
+
+    if best_box is None:
+        return None
+
+    if best_distance > max_distance_px:
+        return None
+
+    return best_box
 
 def execute_pipeline(frame, object_detector, hand_detector, object_identifier, timestamp_ms=0):
     # Run object detection
     boxes, _ = object_detector.detect_from_frame(frame)
+    boxes = sorted(boxes, key=box_midpoint)
 
     # Run hand detection
-    found, start_point, direction, hand_annotated_frame = hand_detector.detect_from_frame(frame, timestamp_ms=timestamp_ms)
+    found, touch_point, hand_annotated_frame = hand_detector.detect_from_frame(frame, timestamp_ms=timestamp_ms)
 
-    preview_image = frame.copy()
+    if hand_annotated_frame is not None:
+        preview_image = hand_annotated_frame.copy()
+    else:
+        preview_image = frame.copy()
    
     print("Hand detected in image." if found else "No hand detected in image.")
  
+    touched_box = select_touched_box(touch_point, boxes, max_distance_px=50) if found else None
+
     cropped_images = []
     for i, box in enumerate(boxes):
-        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        x1, y1, x2, y2 = box_xyxy(box)
 
         # Convert to int
         x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
@@ -180,10 +243,12 @@ def execute_pipeline(frame, object_detector, hand_detector, object_identifier, t
         description = product.get("description", "unknown")
         category = product.get("category", "unknown")
 
-        color = (0, 255, 0) if result_identification["score"] >= ObjectIdentifier.MIN_SCORE and result_identification["confidence"] >= ObjectIdentifier.MIN_CONFIDENCE else (0, 0, 255)
+        color = (0, 255, 0) if accept_identification(result_identification["score"], result_identification["confidence"]) else (0, 0, 255)
+        if touched_box is not None and box is touched_box:
+            color = (255, 0, 0)
         annotate_box(preview_image, boxes, i, color)
-        if result_identification["score"] < ObjectIdentifier.MIN_SCORE or result_identification["confidence"] < ObjectIdentifier.MIN_CONFIDENCE:
-            print(f"[{i}] Unknown product")
+        if not accept_identification(result_identification["score"], result_identification["confidence"]):
+            print(f"[{i}] Unknown product, best: {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
             continue
 
         print(f"[{i}] {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")

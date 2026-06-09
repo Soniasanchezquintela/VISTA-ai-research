@@ -28,5 +28,11 @@
     "sku_id": "yosoy_arroz_coco_1l",
     "image_path": "product_db/images/yosoy_arroz_coco_1l_001.jpg",
     "embedding_index": 4
+  },
+  {
+    "image_id": "yosoy_avena_ecologico_1l_001",
+    "sku_id": "yosoy_avena_ecologico_1l",
+    "image_path": "product_db/images/yosoy_avena_ecologico_1l_001.jpg",
+    "embedding_index": 5
   }
 ]

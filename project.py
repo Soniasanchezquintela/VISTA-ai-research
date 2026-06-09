@@ -1,9 +1,19 @@
+#! /usr/bin/env python3
 from pathlib import Path
 import argparse
+import sys
+
 from object_detector import ObjectDetector
 import cv2
 from hand_detector import HandDetector
 from object_identifier import ObjectIdentifier
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
 
 """
 def handle_user_command(text: str) -> None:
@@ -52,6 +62,32 @@ def close_window_if_open(window_name: str) -> None:
         cv2.destroyWindow(window_name)
     except cv2.error:
         pass
+
+
+def wait_for_preview_close(window_name: str) -> None:
+    old_terminal_settings = None
+    terminal_is_tty = sys.stdin.isatty()
+
+    if sys.platform != "win32" and terminal_is_tty:
+        old_terminal_settings = termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin.fileno())
+
+    try:
+        while is_window_open(window_name):
+            if cv2.waitKey(50) != -1:
+                break
+
+            if sys.platform == "win32":
+                if msvcrt.kbhit():
+                    msvcrt.getch()
+                    break
+            elif terminal_is_tty and select.select([sys.stdin], [], [], 0)[0]:
+                sys.stdin.read(1)
+                break
+    finally:
+        if old_terminal_settings is not None:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_terminal_settings)
+        close_window_if_open(window_name)
 
 
 def annotate_box(frame, boxes, index: int, color):
@@ -199,12 +235,11 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
         print(f"Saved annotated image to: {output_path}")
 
     if preview_image is not None:
-        window_name = "Hand Detection"
+        window_name = "Product Detection"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.imshow(window_name, preview_image)
-        print("Press any key to close the hand preview window.")
-        cv2.waitKey(0)
-        close_window_if_open(window_name)
+        print("Press any key to close the preview window.")
+        wait_for_preview_close(window_name)
 
     return 0
 

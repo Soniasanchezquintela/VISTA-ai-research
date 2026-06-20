@@ -30,7 +30,7 @@ class ObjectDetector:
     def __init__(self, model_path: str = DEFAULT_MODEL_PATH):
         self.model = YOLO(model_path)
 
-    def _detect(self, source, enable_filter: bool) -> tuple[list, any]:
+    def _detect(self, source, enable_filter: bool, verbose: bool = True) -> tuple[list, any]:
         results = self.model.predict(
             source=source,
             imgsz=IMG_SIZE,
@@ -38,7 +38,7 @@ class ObjectDetector:
             iou=IOU_THRES,
             max_det=MAX_DET,
             save=False,
-            verbose=True,
+            verbose=False,
         )
 
         # results is a list; for one image, take results[0]
@@ -46,11 +46,13 @@ class ObjectDetector:
 
         # Print detection summary
         num_boxes = len(result.boxes)
-        print(f"Detected products: {num_boxes}")
+        if verbose:
+            print(f"Detected products: {num_boxes}")
 
         if enable_filter:
             result.boxes = filter_border_boxes(result.boxes, img_width=result.orig_img.shape[1], img_height=result.orig_img.shape[0])
-            print(f"Detected products (after filtering border boxes): {len(result.boxes)}")
+            if verbose:
+                print(f"Detected products (after filtering border boxes): {len(result.boxes)}")
 
         # Draw boxes on the image
         annotated = result.plot()
@@ -65,8 +67,8 @@ class ObjectDetector:
 
         return self._detect(str(image_path), enable_filter=enable_filter)
 
-    def detect_from_frame(self, frame, enable_filter: bool = True) -> tuple[list, any]:
-        return self._detect(frame, enable_filter=enable_filter)
+    def detect_from_frame(self, frame, enable_filter: bool = True, verbose: bool = True) -> tuple[list, any]:
+        return self._detect(frame, enable_filter=enable_filter, verbose=verbose)
 
 
     def print_boxes(self, boxes):

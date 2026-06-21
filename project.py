@@ -3,7 +3,6 @@ from pathlib import Path
 import argparse
 import cmd
 from contextlib import contextmanager
-import os
 import queue
 import shlex
 import shutil
@@ -297,18 +296,20 @@ def execute_pipeline(frame, object_detector, hand_detector, object_identifier, t
         cropped_images.append(crop)
 
         # send cropped image to object identifier
-        result_identification = object_identifier.identify_product(crop)
+        result_identification = object_identifier.identify_product(crop, k=5, verbose=verbose)
 
         product = result_identification["product"]
 
         description = product.get("description", "unknown")
         category = product.get("category", "unknown")
 
-        color = (0, 255, 0) if accept_identification(result_identification["score"], result_identification["confidence"]) else (0, 0, 255)
+        #color = (0, 255, 0) if accept_identification(result_identification["score"], result_identification["confidence"]) else (0, 0, 255)
+        color = (0, 255, 0) if result_identification["accepted"] else (0, 0, 255)
         if touched_box is not None and box is touched_box:
             color = (255, 0, 0)
         annotate_box(preview_image, boxes, i, color)
-        if not accept_identification(result_identification["score"], result_identification["confidence"]):
+        #if not accept_identification(result_identification["score"], result_identification["confidence"]):
+        if not result_identification["accepted"]:
             if verbose:
                 print(f"[{i}] Unknown product, best: {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
             continue
@@ -482,19 +483,14 @@ def start_webcam(
     stop_event: threading.Event | None = None,
 ) -> int:
     """Run webcam processing while writing its output to a RAM-backed log file."""
-    log_directory = "/dev/shm" if Path("/dev/shm").is_dir() else tempfile.gettempdir()
-    log_fd, log_name = tempfile.mkstemp(
-        prefix="vista-webcam-",
-        suffix=".log",
-        dir=log_directory,
-    )
-    log_path = Path(log_name)
+    log_directory = Path("/dev/shm") if Path("/dev/shm").is_dir() else Path(tempfile.gettempdir())
+    log_path = log_directory / "vista-webcam.log"
 
     print(f"Webcam output is being written to: {log_path}")
     print(f"Follow it from another terminal with: tail -f {log_path}")
 
     stdout_router, stderr_router = install_thread_output_routers()
-    with os.fdopen(log_fd, "w", encoding="utf-8", buffering=1) as log_file:
+    with log_path.open("w", encoding="utf-8", buffering=1) as log_file:
         with stdout_router.redirect(log_file), stderr_router.redirect(log_file):
             return process_webcam(webcam_index, save=save, stop_event=stop_event)
 
@@ -505,21 +501,30 @@ def process_webcam(
     stop_event: threading.Event | None = None,
 ) -> int:
     # Open webcam
-    cap = cv2.VideoCapture(index=webcam_index)
+    cap = cv2.VideoCapture(webcam_index, cv2.CAP_V4L2)
     if not cap.isOpened():
         raise ValueError(f"Cannot open webcam: {webcam_index}")
 
-    detector = ObjectDetector()
-    hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
-    object_identifier = ObjectIdentifier()
+    video_config = {
+        0: {"width": 640, "height": 480, "fps": 30},
+        1: {"width": 800, "height": 600, "fps": 25},
+        2: {"width": 1024, "height": 768, "fps": 10},
+    }
 
-   
+    video_config_index = 2
+
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, video_config[video_config_index]["width"])
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, video_config[video_config_index]["height"])
+    cap.set(cv2.CAP_PROP_FPS, video_config[video_config_index]["fps"])
+
     # Get video properties
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps <= 0:
         fps = 30
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print(f"FPS: {fps}, Resolution: {width}x{height}")
     
     # Define video writer
     out = None
@@ -533,13 +538,17 @@ def process_webcam(
             raise ValueError(f"Cannot create output video file: {raw_output_path}")
 
     
-    print(f"FPS: {fps}, Resolution: {width}x{height}")
     print("Processing webcam...")
     print("Press 'q' to close the preview window.")
 
     window_name = "Annotated Video"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    
+
+    # Create the processing pipeline objects
+    detector = ObjectDetector()
+    hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
+    object_identifier = ObjectIdentifier()
+
     frame_count = 0
     
     while stop_event is None or not stop_event.is_set():

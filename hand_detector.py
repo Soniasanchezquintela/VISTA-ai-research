@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import mediapipe as mp
 import numpy as np
 import cv2
@@ -10,6 +12,13 @@ HAND_CONNECTIONS = [
     (13, 17), (17, 18), (18, 19), (19, 20),# pinky
     (0, 17),                               # palm
 ]
+
+@dataclass
+class HandDetection:
+    found: bool
+    touched_point: tuple[int, int] # x,y coordinate of the fingertip, if found
+    annotated_image: np.ndarray | None
+
 
 def draw_hand_landmarks(image_bgr, hand_landmarks):
     height, width, _ = image_bgr.shape
@@ -96,22 +105,18 @@ class HandDetector:
         # Image mode does not need timestamps. For other modes, pass 0 as a safe default.
         return self.detect_from_frame(bgr_image)
 
-    def detect_from_frame(self, frame, timestamp_ms: int = 0) -> tuple[bool, tuple[int, int], np.ndarray | None]:
+    def detect_from_frame(self, frame, timestamp_ms: int = 0, verbose: bool = True) -> HandDetection:
 
         found = False
         touch_point = (0, 0)
         annotated_frame = None
         height, width, _ = frame.shape
 
-        # Flip horizontally for natural mirror view, convert to RGB
-        #frame = cv2.flip(frame, 1)
+        # Convert to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
         # Convert OpenCV frame to MediaPipe Image object
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-        
-        # Get current timestamp in milliseconds
-        # timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))
         
         # Run hand landmark detection based on configured running mode.
         if self.mode == self.Mode.IMAGE:
@@ -146,5 +151,9 @@ class HandDetector:
             #print("No hand detected in this frame.")
             pass
         
-        return found, touch_point, annotated_frame
+        if verbose:
+            print("[HandDetector] Hand detected in image." if found else "[HandDetector] No hand detected in image.")
+
+
+        return HandDetection(found=found, touched_point=touch_point, annotated_image=annotated_frame)
     

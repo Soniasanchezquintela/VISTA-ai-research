@@ -19,6 +19,8 @@ import cv2
 from hand_detector import HandDetector
 from object_identifier import ObjectIdentifier
 
+from scene_memory import ShelfSceneMemory, ProductDetection, ProductIdentification
+
 if sys.platform == "win32":
     import msvcrt
 else:
@@ -26,6 +28,7 @@ else:
     import termios
     import tty
 
+scene_memory = ShelfSceneMemory()
 
 class ThreadOutputRouter:
     """Route stdout/stderr to a file for one thread without affecting others."""
@@ -259,20 +262,21 @@ def execute_pipeline(frame, object_detector, hand_detector, object_identifier, t
     boxes, _ = object_detector.detect_from_frame(frame, verbose=verbose)
     boxes = sorted(boxes, key=box_midpoint)
 
+    # Convert boxes to ProductDetection objects
+    detections: list[ProductDetection] = []
+    for box in boxes:
+        x1, y1, x2, y2 = box_xyxy(box)
+        confidence = float(box.conf.item())
+        detections.append(ProductDetection(bbox=(x1, y1, x2, y2), confidence=confidence))
+
     # Run hand detection
-    found, touch_point, hand_annotated_frame = hand_detector.detect_from_frame(frame, timestamp_ms=timestamp_ms)
-
-    if hand_annotated_frame is not None:
-        preview_image = hand_annotated_frame.copy()
-    else:
-        preview_image = frame.copy()
-   
-    if verbose:
-        print("Hand detected in image." if found else "No hand detected in image.")
+    hand_detection = hand_detector.detect_from_frame(frame, timestamp_ms=timestamp_ms, verbose=verbose)
  
-    touched_box = select_touched_box(touch_point, boxes, max_distance_px=50) if found else None
+    #touched_box = select_touched_box(touch_point, boxes, max_distance_px=50) if found else None
 
-    cropped_images = []
+    identifications = object_identifier.identify_boxes(frame, detections, verbose=verbose)
+
+    """
     for i, box in enumerate(boxes):
         x1, y1, x2, y2 = box_xyxy(box)
 
@@ -316,11 +320,11 @@ def execute_pipeline(frame, object_detector, hand_detector, object_identifier, t
 
         if verbose:
             print(f"[{i}] {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
+    """
+    return detections, hand_detection, identifications
 
-    return preview_image, cropped_images
 
-
-def process_image(image_path: str, save: bool = False, extract_boxes: bool = False) -> int:
+def process_image(image_path: str, save: bool = False) -> int:
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"Cannot open image file: {image_path}")
@@ -329,15 +333,8 @@ def process_image(image_path: str, save: bool = False, extract_boxes: bool = Fal
     hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
     object_identifier = ObjectIdentifier()
 
-    preview_image, cropped_images = execute_pipeline(image, detector, hand_detector, object_identifier)
+    detections, hand_detection, identifications = execute_pipeline(image, detector, hand_detector, object_identifier)
  
-    if extract_boxes:
-        for i, crop in enumerate(cropped_images):
-            # Save bounding boxes one by one to a new image file
-            output_path = Path(f"{Path(image_path).stem}_box_{i}.jpg")
-            cv2.imwrite(str(output_path), crop)
-            print(f"Saved bounding box {i} to: {output_path}")       
-
     if save:
         # Save annotated image
         output_path = Path(f"{Path(image_path).stem}_pred.jpg")
@@ -442,7 +439,13 @@ def process_video(video_path: str, save: bool = False) -> int:
         
         # Run inference on frame
         timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))
-        preview_image, cropped_images = execute_pipeline(frame, detector, hand_detector, object_identifier, timestamp_ms)
+        preview_image, cropped_images, detections = execute_pipeline(
+            frame,
+            detector,
+            hand_detector,
+            object_identifier,
+            timestamp_ms,
+        )
 
         # Display annotated frame
         cv2.imshow(window_name, preview_image)
@@ -549,6 +552,8 @@ def process_webcam(
     hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
     object_identifier = ObjectIdentifier()
 
+    scene_memory.reset()
+
     frame_count = 0
     
     while stop_event is None or not stop_event.is_set():
@@ -568,15 +573,35 @@ def process_webcam(
 
         verbose = frame_count % 30 == 0
 
-        preview_image, cropped_images = execute_pipeline(frame, detector, hand_detector, object_identifier, timestamp_ms, verbose=verbose)
+        print("=" * 80)
+
+        detections, hand_detection, identifications = execute_pipeline(
+            frame,
+            detector,
+            hand_detector,
+            object_identifier,
+            timestamp_ms,
+            verbose=False,
+        )
         end_time = time.time()
         inference_time = end_time - start_time
         # Print inference time every 30 frames
         if frame_count % 30 == 0:
             print(f"Inference speed: {1.0/inference_time:.3f} frames/s")
 
+        scene_memory.update(
+            frame_count, 
+            detections, 
+            identifications, 
+            None if not hand_detection.found else hand_detection.touched_point)
+
         # Display annotated frame
-        cv2.imshow(window_name, preview_image)
+        # if hand_detection.annotated_image is not None:
+        #     preview_image = hand_detection.annotated_image.copy()
+        # else:
+        #     preview_image = frame.copy()
+        annotated_frame = scene_memory.annotate_image(frame)
+        cv2.imshow(window_name, annotated_frame)
         
         # Process GUI events so the window updates and can receive key presses
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -588,7 +613,7 @@ def process_webcam(
         
         # Write frame to output video
         if save and out:
-            out.write(preview_image)
+            out.write(annotated_frame)
 
     if stop_event is not None and stop_event.is_set():
         print("Webcam stop requested.")
@@ -616,12 +641,6 @@ def parse_args():
         "--image",
         required=False,
         help="Path to input image, for example /path/to/IMG_3189.jpg",
-    )
-
-    parser.add_argument(
-        "--extract-boxes",
-        action="store_true",
-        help="Extract bounding boxes from the image.",
     )
 
     parser.add_argument(
@@ -784,7 +803,7 @@ def main():
         exit(1)
 
     if args.image:
-        exit(process_image(args.image, save=args.save, extract_boxes=args.extract_boxes))
+        exit(process_image(args.image, save=args.save))
 
     if args.video:
         exit(process_video(args.video, save=args.save))

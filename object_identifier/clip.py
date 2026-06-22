@@ -7,12 +7,17 @@ import open_clip
 import torch
 from PIL import Image
 
+from scene_memory.types import ProductIdentification, ProductDetection
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "products.sqlite"
 EMBEDDINGS_PATH = BASE_DIR / "product_db/embeddings/product_embeddings.npy"
 IDS_PATH = BASE_DIR / "product_db/embeddings/product_ids.json"
 
+def box_xyxy(box) -> tuple[float, float, float, float]:
+    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+    return x1, y1, x2, y2
 
 def get_device() -> torch.device:
     if torch.cuda.is_available():
@@ -185,11 +190,18 @@ class ObjectIdentifier:
         if k < 1:
             raise ValueError("k must be at least 1")
 
-        similarities = self.reference_embeddings @ query_embedding
+        # Some saved embedding indexes retain a singleton dimension (N, 1, D).
+        # Flattening yields exactly one similarity score per reference image.
+        similarities = (self.reference_embeddings @ query_embedding).reshape(-1)
         if similarities.numel() == 0:
             raise ValueError("The product index contains no reference embeddings")
+        if similarities.numel() != len(self.product_entries):
+            raise ValueError(
+                "Expected one similarity score per product reference, but got "
+                f"{similarities.numel()} scores for {len(self.product_entries)} references"
+            )
 
-        top_k_count = min(k, similarities.numel())
+        top_k_count = min(k, int(similarities.numel()))
         top_scores, top_indices = torch.topk(similarities, k=top_k_count)
 
         top_candidates = []
@@ -205,17 +217,17 @@ class ObjectIdentifier:
             )
 
         # Print the top-k candidates for debugging and analysis.
-        if verbose:
-            print("Top-k candidates:")
-            i = 0
-            for candidate in top_candidates:
-                print(
-                    f"[{i}] SKU: {candidate['sku_id']}, "
-                    f"score: {candidate['score']:.4f}, "
-                    f"image_id: {candidate['reference_image_id']}, "
-                )
-                i += 1
-            print()
+        # if verbose:
+        #     print("Top-k candidates:")
+        #     i = 0
+        #     for candidate in top_candidates:
+        #         print(
+        #             f"[{i}] SKU: {candidate['sku_id']}, "
+        #             f"score: {candidate['score']:.4f}, "
+        #             f"image_id: {candidate['reference_image_id']}, "
+        #         )
+        #         i += 1
+        #     print()
 
         best_index = top_indices[0].item()
         best_entry = self.product_entries[best_index]
@@ -281,3 +293,52 @@ class ObjectIdentifier:
             return self.compute_best_as_single(query_embedding, temperature=temperature, verbose=verbose)
 
         return self.compute_best_top_k(query_embedding, k=k, temperature=temperature, verbose=verbose)
+
+    def identify_boxes(self, frame, detections: list[ProductDetection], verbose: bool = True) -> list[ProductIdentification]:
+        identifications: list[ProductIdentification] = []
+
+        cropped_images = []
+        for i, detection in enumerate(detections):
+            # Convert to int
+            x1, y1, x2, y2 = map(int, detection.bbox)
+
+            # Optional but recommended: clamp coordinates to image size
+            h, w = frame.shape[:2]
+            x1 = max(0, min(x1, w))
+            x2 = max(0, min(x2, w))
+            y1 = max(0, min(y1, h))
+            y2 = max(0, min(y2, h))
+
+            crop = frame[y1:y2, x1:x2]
+
+            if crop.size == 0:
+                if verbose:
+                    print(f"Skipping empty crop for box {i}: {(x1, y1, x2, y2)}")
+                continue
+
+            cropped_images.append(crop)
+
+            # send cropped image to object identifier
+            result_identification = self.identify_product(crop, k=5, verbose=verbose)
+
+            product = result_identification["product"]
+            description = product.get("description", "unknown")
+            category = product.get("category", "unknown")
+
+            if verbose:
+                if result_identification["accepted"]:
+                    print(f"[{i}] {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
+                else:
+                    print(f"[{i}] Unknown product, best: {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
+
+            identifications.append(ProductIdentification(
+                    bbox=(x1, y1, x2, y2),
+                    sku_id=result_identification.get("sku_id"),
+                    score=result_identification.get("score", 0.0),
+                    confidence=result_identification.get("confidence", 0.0),
+                    description=description,
+                    category=category,
+                    accepted=result_identification.get("accepted", False)
+            ))
+
+        return identifications

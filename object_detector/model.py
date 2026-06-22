@@ -41,18 +41,22 @@ class ObjectDetector:
             verbose=False,
         )
 
+        # if verbose:
+        #     print(f"[ObjectDetector] YOLO Detection results: {results[0].boxes}")
+        #     print(f"[ObjectDetector] YOLO Detection results: {results[0].probs}")
+
         # results is a list; for one image, take results[0]
         result = results[0]
 
         # Print detection summary
         num_boxes = len(result.boxes)
         if verbose:
-            print(f"Detected products: {num_boxes}")
+            print(f"[ObjectDetector] Detected products: {num_boxes}")
 
         if enable_filter:
             result.boxes = filter_border_boxes(result.boxes, img_width=result.orig_img.shape[1], img_height=result.orig_img.shape[0])
             if verbose:
-                print(f"Detected products (after filtering border boxes): {len(result.boxes)}")
+                print(f"[ObjectDetector] Detected products (after filtering border boxes): {len(result.boxes)}")
 
         # Draw boxes on the image
         annotated = result.plot()

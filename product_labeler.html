@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Product Bounding Box Labeler</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1a1a1a;
+  color: #e8e8e8;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+}
+.sidebar {
+  width: 340px;
+  background: #252525;
+  padding: 18px;
+  overflow-y: auto;
+  border-right: 1px solid #3a3a3a;
+  flex-shrink: 0;
+}
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f0f0f;
+  position: relative;
+  overflow: auto;
+}
+.canvas-wrapper {
+  position: relative;
+  display: inline-block;
+  margin: 20px;
+}
+canvas {
+  display: block;
+}
+#overlayCanvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  cursor: crosshair;
+}
+h1 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #888;
+  margin: 18px 0 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+button {
+  background: #353535;
+  color: #e8e8e8;
+  border: 1px solid #444;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+button:hover { background: #444; }
+button:active { background: #2a2a2a; }
+button.primary { background: #2563eb; border-color: #2563eb; }
+button.primary:hover { background: #1d4ed8; }
+button.danger {
+  background: transparent;
+  border: none;
+  color: #f87171;
+  padding: 2px 6px;
+  font-size: 16px;
+  line-height: 1;
+}
+button.danger:hover { background: #7f1d1d33; }
+input[type="text"], input[type="file"] {
+  background: #1a1a1a;
+  color: #e8e8e8;
+  border: 1px solid #3a3a3a;
+  padding: 8px 10px;
+  border-radius: 6px;
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+}
+input[type="text"]:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+.row { display: flex; gap: 6px; margin: 6px 0; }
+.row > input { flex: 1; }
+.row > button { flex-shrink: 0; }
+.row.equal > * { flex: 1; }
+.class-item {
+  display: flex;
+  align-items: center;
+  padding: 7px 9px;
+  margin: 3px 0;
+  background: #1c1c1c;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+.class-item:hover { background: #222; }
+.class-item.active {
+  border-color: #2563eb;
+  background: #1e2a4a;
+}
+.class-item .color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 9px;
+  flex-shrink: 0;
+}
+.class-item .name {
+  flex: 1;
+  font-size: 12px;
+  word-break: break-all;
+  line-height: 1.3;
+}
+.class-item .shortcut {
+  color: #555;
+  font-size: 10px;
+  margin-right: 6px;
+  background: #0f0f0f;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.class-item .count {
+  color: #888;
+  font-size: 11px;
+  margin-right: 4px;
+  background: #0f0f0f;
+  padding: 2px 6px;
+  border-radius: 8px;
+  min-width: 22px;
+  text-align: center;
+}
+.box-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 9px;
+  margin: 2px 0;
+  background: #1c1c1c;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: default;
+}
+.box-item:hover { background: #252525; }
+.box-item .label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ccc;
+}
+.box-item .dims {
+  color: #666;
+  font-size: 10px;
+  margin-right: 6px;
+}
+.empty {
+  text-align: center;
+  color: #555;
+  padding: 40px 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.help {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.7;
+  background: #1c1c1c;
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 14px;
+}
+.help kbd {
+  background: #333;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 10px;
+  color: #ddd;
+}
+.status {
+  position: fixed;
+  bottom: 12px;
+  left: 354px;
+  background: rgba(0,0,0,0.8);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: monospace;
+  color: #aaa;
+  z-index: 100;
+}
+.zoom-controls {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  background: rgba(0,0,0,0.85);
+  padding: 4px;
+  border-radius: 8px;
+  z-index: 100;
+}
+.zoom-controls button {
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 34px;
+}
+.placeholder-text {
+  font-size: 12px;
+  color: #666;
+  padding: 8px 4px;
+  font-style: italic;
+}
+.section-action {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: normal;
+}
+.section-action:hover { color: #60a5fa; background: none; }
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #22c55e;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 200;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  animation: slideUp 0.2s;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h1>📦 Product Labeler</h1>
+  <div class="subtitle">Bounding boxes for shelf product detection</div>
+
+  <h3>1. Image</h3>
+  <input type="file" id="imageInput" accept="image/*">
+  <div id="imageInfo" style="font-size:11px;color:#666;margin-top:6px;"></div>
+
+  <h3>
+    2. Classes <span id="classCount" style="color:#555;font-weight:normal;">(0)</span>
+    <button class="section-action" id="loadClassesBtn">Import list</button>
+  </h3>
+  <div class="row">
+    <input type="text" id="newClassInput" placeholder="e.g. zanuy_chips_chia_130g" autocomplete="off">
+    <button id="addClassBtn" class="primary">Add</button>
+  </div>
+  <div id="classList">
+    <div class="placeholder-text">Add a class for each product you'll label. Use snake_case names.</div>
+  </div>
+
+  <h3>
+    3. Boxes <span id="boxCount" style="color:#555;font-weight:normal;">(0)</span>
+    <button class="section-action" id="clearBoxesBtn" style="color:#f87171;">Clear all</button>
+  </h3>
+  <div id="boxList">
+    <div class="placeholder-text">Drag on the image to draw a box.</div>
+  </div>
+
+  <h3>4. Export</h3>
+  <div class="row equal">
+    <button id="exportYolo">YOLO .txt</button>
+    <button id="exportCoco">COCO .json</button>
+  </div>
+  <div class="row equal">
+    <button id="exportCrops">Crops (jpg)</button>
+    <button id="saveProject">Save .json</button>
+  </div>
+  <input type="file" id="loadProjectInput" accept="application/json" style="display:none">
+  <button id="loadProjectBtn" style="width:100%;margin-top:4px;">Load saved .json</button>
+
+  <div class="help">
+    <strong style="color:#ddd;">Shortcuts</strong><br>
+    <kbd>drag</kbd> draw a box<br>
+    <kbd>right-click</kbd> delete box under cursor<br>
+    <kbd>1</kbd>–<kbd>9</kbd> switch class<br>
+    <kbd>Ctrl</kbd> + <kbd>wheel</kbd> zoom<br>
+    <kbd>F</kbd> fit to screen
+  </div>
+</div>
+
+<div class="canvas-area" id="canvasArea">
+  <div id="emptyState" class="empty">
+    📸 Load a shelf photo to start.<br>
+    <span style="font-size:12px;">Then add product classes and drag boxes around each item.</span>
+  </div>
+  <div class="canvas-wrapper" id="canvasWrapper" style="display:none">
+    <canvas id="imageCanvas"></canvas>
+    <canvas id="overlayCanvas"></canvas>
+  </div>
+</div>
+
+<div class="status" id="status" style="display:none"></div>
+<div class="zoom-controls" id="zoomControls" style="display:none">
+  <button id="zoomOut" title="Zoom out">−</button>
+  <button id="zoomReset" title="Fit (F)">Fit</button>
+  <button id="zoomIn" title="Zoom in">+</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const COLORS = [
+  '#ef4444','#f97316','#eab308','#22c55e','#06b6d4',
+  '#3b82f6','#8b5cf6','#ec4899','#f43f5e','#10b981',
+  '#0ea5e9','#a855f7','#84cc16','#f59e0b','#14b8a6',
+  '#fb7185','#fbbf24','#4ade80','#22d3ee','#a78bfa'
+];
+
+const state = {
+  image: null,
+  imageName: '',
+  classes: [],
+  activeClass: -1,
+  boxes: [],
+  zoom: 1.0,
+  drawing: null,
+  hovering: -1,
+};
+
+const imgCanvas = $('imageCanvas');
+const overlay = $('overlayCanvas');
+const imgCtx = imgCanvas.getContext('2d');
+const oCtx = overlay.getContext('2d');
+
+function showToast(msg, color = '#22c55e') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.background = color;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+function fitZoom() {
+  if (!state.image) return;
+  const area = $('canvasArea');
+  const padding = 60;
+  const scaleX = (area.clientWidth - padding) / state.image.width;
+  const scaleY = (area.clientHeight - padding) / state.image.height;
+  state.zoom = Math.min(scaleX, scaleY, 1);
+  applyZoom();
+}
+
+function applyZoom() {
+  if (!state.image) return;
+  const w = Math.round(state.image.width * state.zoom);
+  const h = Math.round(state.image.height * state.zoom);
+  imgCanvas.width = w;
+  imgCanvas.height = h;
+  overlay.width = w;
+  overlay.height = h;
+  imgCtx.drawImage(state.image, 0, 0, w, h);
+  redrawBoxes();
+}
+
+function redrawBoxes() {
+  oCtx.clearRect(0, 0, overlay.width, overlay.height);
+  state.boxes.forEach((b, i) => {
+    const cls = state.classes[b.class];
+    const color = cls?.color || '#888';
+    const x = b.x * state.zoom;
+    const y = b.y * state.zoom;
+    const w = b.w * state.zoom;
+    const h = b.h * state.zoom;
+
+    oCtx.fillStyle = color + '22';
+    oCtx.fillRect(x, y, w, h);
+    oCtx.strokeStyle = color;
+    oCtx.lineWidth = i === state.hovering ? 3 : 2;
+    oCtx.strokeRect(x, y, w, h);
+
+    const labelText = cls?.name || 'unknown';
+    oCtx.font = 'bold 12px -apple-system, sans-serif';
+    const textW = oCtx.measureText(labelText).width;
+    const labelH = 18;
+    const labelY = y >= labelH ? y - labelH : y;
+    oCtx.fillStyle = color;
+    oCtx.fillRect(x, labelY, textW + 10, labelH);
+    oCtx.fillStyle = '#fff';
+    oCtx.fillText(labelText, x + 5, labelY + 13);
+  });
+
+  if (state.drawing) {
+    const { startX, startY, currX, currY } = state.drawing;
+    const color = state.classes[state.activeClass]?.color || '#fff';
+    oCtx.strokeStyle = color;
+    oCtx.lineWidth = 2;
+    oCtx.setLineDash([6, 4]);
+    oCtx.strokeRect(
+      Math.min(startX, currX) * state.zoom,
+      Math.min(startY, currY) * state.zoom,
+      Math.abs(currX - startX) * state.zoom,
+      Math.abs(currY - startY) * state.zoom
+    );
+    oCtx.setLineDash([]);
+  }
+}
+
+function updateUI() {
+  // Classes panel
+  const cl = $('classList');
+  $('classCount').textContent = `(${state.classes.length})`;
+  if (state.classes.length === 0) {
+    cl.innerHTML = '<div class="placeholder-text">Add a class for each product you\'ll label. Use snake_case names.</div>';
+  } else {
+    cl.innerHTML = '';
+    state.classes.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'class-item' + (i === state.activeClass ? ' active' : '');
+      const count = state.boxes.filter(b => b.class === i).length;
+      const shortcut = i < 9 ? `<span class="shortcut">${i+1}</span>` : '';
+      div.innerHTML = `
+        <div class="color-dot" style="background:${c.color}"></div>
+        <div class="name">${escapeHtml(c.name)}</div>
+        ${shortcut}
+        <div class="count">${count}</div>
+        <button class="danger" title="Delete class">×</button>
+      `;
+      div.addEventListener('click', (e) => {
+        if (e.target.classList.contains('danger')) {
+          if (count > 0 && !confirm(`Delete "${c.name}" and its ${count} box(es)?`)) return;
+          state.boxes = state.boxes
+            .filter(b => b.class !== i)
+            .map(b => ({ ...b, class: b.class > i ? b.class - 1 : b.class }));
+          state.classes.splice(i, 1);
+          if (state.activeClass >= state.classes.length) state.activeClass = state.classes.length - 1;
+          updateUI();
+          redrawBoxes();
+        } else {
+          state.activeClass = i;
+          updateUI();
+        }
+      });
+      cl.appendChild(div);
+    });
+  }
+
+  // Boxes panel
+  const bl = $('boxList');
+  $('boxCount').textContent = `(${state.boxes.length})`;
+  if (state.boxes.length === 0) {
+    bl.innerHTML = '<div class="placeholder-text">Drag on the image to draw a box.</div>';
+  } else {
+    bl.innerHTML = '';
+    state.boxes.forEach((b, i) => {
+      const c = state.classes[b.class];
+      const div = document.createElement('div');
+      div.className = 'box-item';
+      div.innerHTML = `
+        <div class="color-dot" style="width:8px;height:8px;border-radius:50%;background:${c?.color || '#888'};margin-right:8px;flex-shrink:0;"></div>
+        <div class="label">${escapeHtml(c?.name || 'unknown')}</div>
+        <div class="dims">${Math.round(b.w)}×${Math.round(b.h)}</div>
+        <button class="danger" title="Delete box">×</button>
+      `;
+      div.addEventListener('mouseenter', () => { state.hovering = i; redrawBoxes(); });
+      div.addEventListener('mouseleave', () => { state.hovering = -1; redrawBoxes(); });
+      div.querySelector('.danger').addEventListener('click', () => {
+        state.boxes.splice(i, 1);
+        updateUI();
+        redrawBoxes();
+      });
+      bl.appendChild(div);
+    });
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
+}
+
+// Image input
+$('imageInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  state.imageName = file.name.replace(/\.[^.]+$/, '');
+  $('imageInfo').textContent = file.name;
+  const img = new Image();
+  img.onload = () => {
+    state.image = img;
+    state.boxes = [];
+    $('emptyState').style.display = 'none';
+    $('canvasWrapper').style.display = 'inline-block';
+    $('zoomControls').style.display = 'flex';
+    $('status').style.display = 'block';
+    fitZoom();
+    updateUI();
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+// Class add
+function addClass(name) {
+  name = name.trim();
+  if (!name) return;
+  if (state.classes.some(c => c.name === name)) {
+    showToast(`"${name}" already exists`, '#ef4444');
+    return;
+  }
+  state.classes.push({ name, color: COLORS[state.classes.length % COLORS.length] });
+  state.activeClass = state.classes.length - 1;
+  updateUI();
+}
+
+$('addClassBtn').addEventListener('click', () => {
+  addClass($('newClassInput').value);
+  $('newClassInput').value = '';
+  $('newClassInput').focus();
+});
+$('newClassInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('addClassBtn').click();
+});
+
+// Import class list (paste/load text file with one class per line)
+$('loadClassesBtn').addEventListener('click', () => {
+  const text = prompt('Paste class names, one per line:');
+  if (!text) return;
+  text.split('\n').map(s => s.trim()).filter(Boolean).forEach(addClass);
+});
+
+// Canvas coordinates
+function canvasCoords(e) {
+  const rect = overlay.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) / state.zoom,
+    y: (e.clientY - rect.top) / state.zoom
+  };
+}
+
+overlay.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  if (state.classes.length === 0) {
+    showToast('Add a class first!', '#ef4444');
+    return;
+  }
+  if (state.activeClass < 0) state.activeClass = 0;
+  const { x, y } = canvasCoords(e);
+  state.drawing = { startX: x, startY: y, currX: x, currY: y };
+});
+
+overlay.addEventListener('mousemove', (e) => {
+  const { x, y } = canvasCoords(e);
+  $('status').textContent = `x: ${Math.round(x)}  y: ${Math.round(y)}  |  zoom: ${Math.round(state.zoom * 100)}%  |  ${state.image?.width || 0}×${state.image?.height || 0}px`;
+  if (state.drawing) {
+    state.drawing.currX = Math.max(0, Math.min(state.image.width, x));
+    state.drawing.currY = Math.max(0, Math.min(state.image.height, y));
+    redrawBoxes();
+  }
+});
+
+overlay.addEventListener('mouseup', (e) => {
+  if (!state.drawing) return;
+  const { startX, startY, currX, currY } = state.drawing;
+  const w = Math.abs(currX - startX);
+  const h = Math.abs(currY - startY);
+  if (w > 5 && h > 5) {
+    state.boxes.push({
+      class: state.activeClass,
+      x: Math.max(0, Math.min(startX, currX)),
+      y: Math.max(0, Math.min(startY, currY)),
+      w, h
+    });
+  }
+  state.drawing = null;
+  updateUI();
+  redrawBoxes();
+});
+
+overlay.addEventListener('mouseleave', () => {
+  if (state.drawing) {
+    state.drawing = null;
+    redrawBoxes();
+  }
+});
+
+overlay.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const { x, y } = canvasCoords(e);
+  for (let i = state.boxes.length - 1; i >= 0; i--) {
+    const b = state.boxes[i];
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+      state.boxes.splice(i, 1);
+      updateUI();
+      redrawBoxes();
+      return;
+    }
+  }
+});
+
+// Shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key >= '1' && e.key <= '9') {
+    const i = parseInt(e.key) - 1;
+    if (i < state.classes.length) {
+      state.activeClass = i;
+      updateUI();
+    }
+  } else if (e.key.toLowerCase() === 'f') {
+    fitZoom();
+  }
+});
+
+// Zoom
+$('zoomIn').addEventListener('click', () => { state.zoom *= 1.25; applyZoom(); });
+$('zoomOut').addEventListener('click', () => { state.zoom = Math.max(0.05, state.zoom / 1.25); applyZoom(); });
+$('zoomReset').addEventListener('click', fitZoom);
+
+$('canvasArea').addEventListener('wheel', (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  state.zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+  state.zoom = Math.max(0.05, Math.min(8, state.zoom));
+  applyZoom();
+}, { passive: false });
+
+// Clear boxes
+$('clearBoxesBtn').addEventListener('click', () => {
+  if (state.boxes.length === 0) return;
+  if (confirm(`Delete all ${state.boxes.length} boxes?`)) {
+    state.boxes = [];
+    updateUI();
+    redrawBoxes();
+  }
+});
+
+// Download helpers
+function downloadText(filename, text, type = 'text/plain') {
+  const blob = new Blob([text], { type });
+  downloadBlob(filename, blob);
+}
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+// Export YOLO
+$('exportYolo').addEventListener('click', () => {
+  if (!state.image || state.boxes.length === 0) {
+    showToast('No boxes to export', '#ef4444'); return;
+  }
+  const W = state.image.width, H = state.image.height;
+  const lines = state.boxes.map(b => {
+    const cx = (b.x + b.w / 2) / W;
+    const cy = (b.y + b.h / 2) / H;
+    return `${b.class} ${cx.toFixed(6)} ${cy.toFixed(6)} ${(b.w/W).toFixed(6)} ${(b.h/H).toFixed(6)}`;
+  }).join('\n');
+  downloadText(`${state.imageName}.txt`, lines);
+  const classesTxt = state.classes.map(c => c.name).join('\n');
+  downloadText('classes.txt', classesTxt);
+  showToast(`Exported ${state.boxes.length} boxes (YOLO) + classes.txt`);
+});
+
+// Export COCO
+$('exportCoco').addEventListener('click', () => {
+  if (!state.image || state.boxes.length === 0) {
+    showToast('No boxes to export', '#ef4444'); return;
+  }
+  const coco = {
+    info: { description: 'Shelf product annotations', date_created: new Date().toISOString() },
+    images: [{
+      id: 1,
+      file_name: `${state.imageName}.jpg`,
+      width: state.image.width,
+      height: state.image.height,
+    }],
+    categories: state.classes.map((c, i) => ({
+      id: i + 1, name: c.name, supercategory: 'product'
+    })),
+    annotations: state.boxes.map((b, i) => ({
+      id: i + 1,
+      image_id: 1,
+      category_id: b.class + 1,
+      bbox: [Math.round(b.x), Math.round(b.y), Math.round(b.w), Math.round(b.h)],
+      area: Math.round(b.w * b.h),
+      iscrowd: 0,
+      segmentation: [],
+    })),
+  };
+  downloadText(`${state.imageName}_coco.json`, JSON.stringify(coco, null, 2), 'application/json');
+  showToast(`Exported COCO (${state.boxes.length} annotations)`);
+});
+
+// Export crops
+$('exportCrops').addEventListener('click', async () => {
+  if (!state.image || state.boxes.length === 0) {
+    showToast('No boxes to export', '#ef4444'); return;
+  }
+  const counters = {};
+  for (const b of state.boxes) {
+    const className = state.classes[b.class].name;
+    counters[className] = (counters[className] || 0) + 1;
+    const n = String(counters[className]).padStart(3, '0');
+    const filename = `${className}_${n}.jpg`;
+
+    const c = document.createElement('canvas');
+    c.width = Math.round(b.w);
+    c.height = Math.round(b.h);
+    const ctx = c.getContext('2d');
+    ctx.drawImage(state.image, b.x, b.y, b.w, b.h, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+    downloadBlob(filename, blob);
+    await new Promise(r => setTimeout(r, 80));
+  }
+  showToast(`Exported ${state.boxes.length} crops`);
+});
+
+// Save project
+$('saveProject').addEventListener('click', () => {
+  if (!state.image) { showToast('Load an image first', '#ef4444'); return; }
+  const data = {
+    version: 1,
+    imageName: state.imageName,
+    imageWidth: state.image.width,
+    imageHeight: state.image.height,
+    classes: state.classes,
+    boxes: state.boxes,
+  };
+  downloadText(`${state.imageName}_project.json`, JSON.stringify(data, null, 2), 'application/json');
+  showToast('Project saved');
+});
+
+// Load project
+$('loadProjectBtn').addEventListener('click', () => $('loadProjectInput').click());
+$('loadProjectInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      state.classes = data.classes || [];
+      state.boxes = data.boxes || [];
+      state.activeClass = state.classes.length > 0 ? 0 : -1;
+      updateUI();
+      redrawBoxes();
+      showToast(`Loaded ${state.boxes.length} boxes, ${state.classes.length} classes`);
+    } catch (err) {
+      showToast('Invalid project file', '#ef4444');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+window.addEventListener('resize', () => { if (state.image) applyZoom(); });
+
+updateUI();
+</script>
+</body>
+</html>

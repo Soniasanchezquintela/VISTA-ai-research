@@ -498,25 +498,104 @@ def start_webcam(
             return process_webcam(webcam_index, save=save, stop_event=stop_event)
 
 
+def open_webcam_capture(webcam_index: int) -> cv2.VideoCapture:
+    """Open a camera using the native backend, with OpenCV fallback."""
+    # V4L2 is Linux-specific. macOS cameras are exposed through AVFoundation.
+    if sys.platform.startswith("linux"):
+        preferred_backend = cv2.CAP_V4L2
+    elif sys.platform == "darwin":
+        preferred_backend = cv2.CAP_AVFOUNDATION
+    else:
+        preferred_backend = cv2.CAP_ANY
+
+    cap = cv2.VideoCapture(webcam_index, preferred_backend)
+    if not cap.isOpened() and preferred_backend != cv2.CAP_ANY:
+        cap.release()
+        cap = cv2.VideoCapture(webcam_index, cv2.CAP_ANY)
+
+    if not cap.isOpened():
+        if sys.platform == "darwin":
+            raise ValueError(
+                f"Cannot open webcam: {webcam_index}. Check that macOS has granted "
+                "Camera permission to the app that launches Python (for example, "
+                "Terminal or your IDE), then close any other app using the camera."
+            )
+        raise ValueError(f"Cannot open webcam: {webcam_index}")
+
+    return cap
+
+
+def print_webcam_info(webcam_index: int) -> None:
+    """Print camera details and the common modes accepted by its OpenCV backend."""
+    cap = open_webcam_capture(webcam_index)
+    try:
+        backend = cap.getBackendName() if hasattr(cap, "getBackendName") else "unknown"
+        fourcc_value = int(cap.get(cv2.CAP_PROP_FOURCC))
+        fourcc = "".join(chr((fourcc_value >> (8 * offset)) & 0xFF) for offset in range(4)).rstrip("\x00")
+
+        print(f"Webcam {webcam_index}")
+        print(f"Backend: {backend}")
+        print(
+            "Current mode: "
+            f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))} "
+            f"at {cap.get(cv2.CAP_PROP_FPS):g} FPS"
+        )
+        print(f"Pixel format: {fourcc or 'not reported'}")
+        print(f"Reported buffer size: {cap.get(cv2.CAP_PROP_BUFFERSIZE):g}")
+
+        # OpenCV does not expose a portable API for enumerating every mode. Probe
+        # practical modes and report the dimensions/FPS actually selected by the
+        # device, rather than assuming that every requested value is supported.
+        requested_modes = (
+            (640, 480, 30), (640, 480, 60),
+            (800, 600, 30),
+            (1280, 720, 30), (1280, 720, 60),
+            (1280, 960, 30),
+            (1024, 768, 10), (1024, 768, 15), (1024, 768, 25),
+            (1024, 768, 30), (1024, 768, 60),
+            (1920, 1080, 30), (1920, 1080, 60),
+            (2560, 1440, 30), (3840, 2160, 30),
+        )
+        accepted_modes: dict[tuple[int, int, float], list[str]] = {}
+        for requested_width, requested_height, requested_fps in requested_modes:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, requested_width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, requested_height)
+            cap.set(cv2.CAP_PROP_FPS, requested_fps)
+            actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            actual_fps = cap.get(cv2.CAP_PROP_FPS)
+            mode = (actual_width, actual_height, actual_fps)
+            accepted_modes.setdefault(mode, []).append(
+                f"{requested_width}x{requested_height}@{requested_fps}"
+            )
+
+        print("Common modes accepted by the camera:")
+        for (width, height, fps), requests in accepted_modes.items():
+            requested = ", ".join(requests)
+            print(f"  {width}x{height} at {fps:g} FPS (for request: {requested})")
+    finally:
+        cap.release()
+
+
 def process_webcam(
     webcam_index: int,
     save: bool = False,
     stop_event: threading.Event | None = None,
 ) -> int:
-    # Open webcam
-    cap = cv2.VideoCapture(webcam_index, cv2.CAP_V4L2)
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open webcam: {webcam_index}")
+    cap = open_webcam_capture(webcam_index)
 
     video_config = {
         0: {"width": 640, "height": 480, "fps": 30},
         1: {"width": 800, "height": 600, "fps": 25},
         2: {"width": 1024, "height": 768, "fps": 10},
+        3: {"width": 1280, "height": 720, "fps": 30},
     }
 
     video_config_index = 2
 
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
+    # YUYV is a V4L2 pixel format and is not meaningful for AVFoundation.
+    if sys.platform.startswith("linux"):
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, video_config[video_config_index]["width"])
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, video_config[video_config_index]["height"])
     cap.set(cv2.CAP_PROP_FPS, video_config[video_config_index]["fps"])
@@ -555,6 +634,12 @@ def process_webcam(
     scene_memory.reset()
 
     frame_count = 0
+    # Live-camera backends do not guarantee CAP_PROP_POS_MSEC: AVFoundation in
+    # particular may repeatedly return zero. MediaPipe's video-mode hand
+    # detector requires strictly increasing timestamps, so use a monotonic
+    # local clock and enforce a one-millisecond minimum step between frames.
+    webcam_started_at = time.monotonic()
+    last_timestamp_ms = -1
     
     while stop_event is None or not stop_event.is_set():
         ret, frame = cap.read()
@@ -567,7 +652,9 @@ def process_webcam(
         frame_count += 1
         
         # Run inference on frame
-        timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))
+        timestamp_ms = int((time.monotonic() - webcam_started_at) * 1000)
+        timestamp_ms = max(timestamp_ms, last_timestamp_ms + 1)
+        last_timestamp_ms = timestamp_ms
         # Measure elapsed time for inference
         start_time = time.time()
 
@@ -652,9 +739,9 @@ def parse_args():
     parser.add_argument(
         "--webcam",
         type=int,
-        default=0,
+        default=None,
         metavar="DEVICE",
-        help="Video device index to open for real-time inference (default: 0).",
+        help="Video device index to open for real-time inference.",
     )
 
     parser.add_argument(
@@ -717,7 +804,7 @@ class CommandInterpreter(cmd.Cmd):
             process_video(video_path.name)
 
     def do_start_webcam(self, arg: str) -> None:
-        """start_webcam [device_index] -- start webcam processing in the background."""
+        """start_webcam [device_index] -- start webcam processing."""
         parts = shlex.split(arg)
 
         if len(parts) > 1:
@@ -732,6 +819,18 @@ class CommandInterpreter(cmd.Cmd):
                 print("Error: device_index must be an integer, for example: start_webcam 0")
                 return
 
+        # OpenCV's macOS GUI backend (Cocoa) must create and update windows from
+        # the application's main thread. Running it in the background worker
+        # results in the unhelpful "Unknown C++ exception" message. The command
+        # remains interactive on macOS: press q in the preview to return here.
+        if sys.platform == "darwin":
+            print("Starting webcam on the main thread. Press 'q' in the preview to stop.")
+            try:
+                process_webcam(device_index)
+            except Exception as exc:
+                print(f"Webcam processing failed: {exc}")
+            return
+
         with self._webcam_lock:
             if self.webcam_running:
                 print("Webcam processing is already running. Use stop_webcam before starting another one.")
@@ -742,6 +841,29 @@ class CommandInterpreter(cmd.Cmd):
             self._webcam_jobs.put((device_index, self.webcam_stop_event))
 
         print(f"Started webcam processing on device {device_index}. Use stop_webcam to stop it.")
+
+    def do_webcam_info(self, arg: str) -> None:
+        """webcam_info <device_index> -- show camera details and common supported modes."""
+        parts = shlex.split(arg)
+        if len(parts) != 1:
+            print("Usage: webcam_info <device_index>")
+            return
+
+        try:
+            device_index = int(parts[0])
+        except ValueError:
+            print("Error: device_index must be an integer, for example: webcam_info 0")
+            return
+
+        with self._webcam_lock:
+            if self.webcam_running:
+                print("Stop webcam processing before requesting webcam information.")
+                return
+
+        try:
+            print_webcam_info(device_index)
+        except Exception as exc:
+            print(f"Could not read webcam information: {exc}")
 
     def do_stop_webcam(self, arg: str) -> None:
         """stop_webcam -- request webcam processing to stop."""
@@ -793,14 +915,14 @@ def main():
 
     args = parse_args()
 
-    counter = sum([bool(args.image), bool(args.video), bool(args.webcam)])
+    counter = sum([bool(args.image), bool(args.video), args.webcam is not None])
     if counter > 1:
         print("Error: Please provide only one of --image, --video, or --webcam.")
         exit(1)
     
     if counter == 0:
         CommandInterpreter().cmdloop()
-        exit(1)
+        exit(0)
 
     if args.image:
         exit(process_image(args.image, save=args.save))
@@ -808,7 +930,7 @@ def main():
     if args.video:
         exit(process_video(args.video, save=args.save))
 
-    if args.webcam:
+    if args.webcam is not None:
         exit(process_webcam(args.webcam, save=args.save))
 
 if __name__ == "__main__":

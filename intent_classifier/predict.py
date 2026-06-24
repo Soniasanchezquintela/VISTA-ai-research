@@ -1,7 +1,8 @@
 import argparse
 from pathlib import Path
-import torch
-from intent_classifier.classifier import IntentClassifier
+
+from intent_classifier.classifier import HybridIntentClassifier, IntentClassifier
+from intent_classifier.llm_parser import DEFAULT_LLM_MODEL, LLMIntentParser
 
 
 DEFAULT_CHECKPOINT_PATH = (
@@ -15,6 +16,19 @@ def print_prediction(classifier: IntentClassifier, text: str) -> None:
     print(f"intent: {result.intent.value}")
     print(f"target: {result.target}")
     print(f"confidence: {result.confidence:.3f}")
+    print(f"source: {result.source}")
+    if result.language is not None:
+        print(f"language: {result.language}")
+    if result.shelf_constraint is not None:
+        print(f"shelf_constraint: {result.shelf_constraint}")
+    if result.requested_detail is not None:
+        print(f"requested_detail: {result.requested_detail}")
+    if result.response_style is not None:
+        print(f"response_style: {result.response_style}")
+    if result.metadata and result.metadata.get("error"):
+        print(f"error: {result.metadata['error']}")
+    if result.metadata and result.metadata.get("hint"):
+        print(f"hint: {result.metadata['hint']}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,6 +54,29 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Torch device, for example cuda, mps, or cpu.",
     )
+    parser.add_argument(
+        "--backend",
+        choices=("bert", "llm", "hybrid"),
+        default="bert",
+        help="Intent parser backend. 'hybrid' uses BERT first and LLM fallback.",
+    )
+    parser.add_argument(
+        "--llm-model",
+        default=DEFAULT_LLM_MODEL,
+        help="Ollama model used for --backend llm or --backend hybrid.",
+    )
+    parser.add_argument(
+        "--llm-confidence-threshold",
+        type=float,
+        default=0.45,
+        help="Minimum LLM confidence before returning unknown.",
+    )
+    parser.add_argument(
+        "--llm-fallback-threshold",
+        type=float,
+        default=0.70,
+        help="In hybrid mode, call the LLM when BERT confidence is below this value.",
+    )
     return parser.parse_args()
 
 
@@ -63,11 +100,31 @@ class SimpleIntentClassifier(IntentClassifier):
 
 def main() -> None:
     args = parse_args()
-    classifier = IntentClassifier(
-        checkpoint_path=args.checkpoint,
-        confidence_threshold=args.confidence_threshold,
-        device=args.device,
-    )
+    bert_classifier = None
+    if args.backend in {"bert", "hybrid"}:
+        bert_classifier = IntentClassifier(
+            checkpoint_path=args.checkpoint,
+            confidence_threshold=args.confidence_threshold,
+            device=args.device,
+        )
+
+    if args.backend == "bert":
+        classifier = bert_classifier
+    elif args.backend == "llm":
+        classifier = LLMIntentParser(
+            model=args.llm_model,
+            confidence_threshold=args.llm_confidence_threshold,
+        )
+    else:
+        llm_parser = LLMIntentParser(
+            model=args.llm_model,
+            confidence_threshold=args.llm_confidence_threshold,
+        )
+        classifier = HybridIntentClassifier(
+            bert_classifier=bert_classifier,
+            llm_parser=llm_parser,
+            llm_fallback_threshold=args.llm_fallback_threshold,
+        )
 
     if args.text is not None:
         print_prediction(classifier, args.text)

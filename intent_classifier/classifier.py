@@ -160,3 +160,68 @@ class IntentClassifier:
 
     def predict_batch(self, texts: Iterable[str]) -> List[IntentResult]:
         return [self.predict(text) for text in texts]
+
+
+class HybridIntentClassifier:
+    """Use BERT for fast known intents, then LLM for richer fallback parsing."""
+
+    TARGET_INTENTS = {
+        Intent.NAVIGATE_TO_TARGET,
+        Intent.CONFIRM_TARGET_PRESENT,
+        Intent.GET_PRICE,
+    }
+
+    def __init__(
+        self,
+        bert_classifier: IntentClassifier,
+        llm_parser,
+        llm_fallback_threshold: float = 0.70,
+        prefer_llm: bool = False,
+    ) -> None:
+        self.bert_classifier = bert_classifier
+        self.llm_parser = llm_parser
+        self.llm_fallback_threshold = llm_fallback_threshold
+        self.prefer_llm = prefer_llm
+
+    def predict(self, text: str) -> IntentResult:
+        if self.prefer_llm:
+            return self.llm_parser.parse(text)
+
+        bert_result = self.bert_classifier.predict(text)
+        if not self._should_use_llm(text, bert_result):
+            return bert_result
+
+        llm_result = self.llm_parser.parse(text)
+        return self._choose_result(bert_result, llm_result)
+
+    def predict_batch(self, texts: Iterable[str]) -> List[IntentResult]:
+        return [self.predict(text) for text in texts]
+
+    def _should_use_llm(self, text: str, bert_result: IntentResult) -> bool:
+        if not text.strip():
+            return False
+
+        if bert_result.intent == Intent.UNKNOWN:
+            return True
+
+        if bert_result.confidence < self.llm_fallback_threshold:
+            return True
+
+        if bert_result.intent in self.TARGET_INTENTS and not bert_result.target:
+            return True
+
+        return False
+
+    def _choose_result(self, bert_result: IntentResult, llm_result: IntentResult) -> IntentResult:
+        if llm_result.intent == Intent.UNKNOWN and bert_result.intent != Intent.UNKNOWN:
+            return bert_result
+
+        if llm_result.intent == bert_result.intent:
+            if not llm_result.target and bert_result.target:
+                llm_result.target = bert_result.target
+            return llm_result
+
+        if bert_result.confidence >= self.llm_fallback_threshold and llm_result.confidence < 0.80:
+            return bert_result
+
+        return llm_result

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 class Intent(str, Enum):
@@ -18,3 +18,10 @@ class IntentResult:
     intent: Intent
     target: Optional[str]
     confidence: float
+    source: str = "bert"
+    language: Optional[str] = None
+    shelf_constraint: Optional[str] = None
+    requested_detail: Optional[str] = None
+    response_style: Optional[str] = None
+    raw_text: Optional[str] = None
+    metadata: Optional[dict[str, Any]] = None

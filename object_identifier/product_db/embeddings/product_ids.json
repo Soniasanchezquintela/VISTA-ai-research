@@ -40,5 +40,23 @@
     "sku_id": "yosoy_avena_ecologico_1l",
     "image_path": "product_db/images/yosoy_avena_ecologico_1l_001.jpg",
     "embedding_index": 6
+  },
+  {
+    "image_id": "yosoy_barista_avena_1l_001",
+    "sku_id": "yosoy_barista_avena_1l",
+    "image_path": "product_db/images/yosoy_barista_avena_1l_001.jpg",
+    "embedding_index": 7
+  },
+  {
+    "image_id": "yosoy_barista_avena_1l_002",
+    "sku_id": "yosoy_barista_avena_1l",
+    "image_path": "product_db/images/yosoy_barista_avena_1l_002.jpg",
+    "embedding_index": 8
+  },
+  {
+    "image_id": "yosoy_barista_avena_1l_003",
+    "sku_id": "yosoy_barista_avena_1l",
+    "image_path": "product_db/images/yosoy_barista_avena_1l_003.jpg",
+    "embedding_index": 9
   }
 ]

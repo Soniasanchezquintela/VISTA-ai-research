@@ -35,7 +35,8 @@ def save_wav(audio: np.ndarray, path: Path, sample_rate: int = SAMPLE_RATE) -> N
     audio_int16 = (audio * 32767).astype(np.int16)
     write(path, sample_rate, audio_int16)
 
-
+# See this link to find out more about the different compute types:
+# https://opennmt.net/CTranslate2/quantization.html
 def transcribe_file(
     audio_path: Path,
     model_size: str,
@@ -58,6 +59,10 @@ def transcribe_file(
 
     print(f"Detected language: {info.language}")
     print(f"Language probability: {info.language_probability:.2f}")
+    if info.all_language_probs:
+        print("All language probabilities:")
+        for lang, prob in info.all_language_probs.items():
+            print(f"  {lang}: {prob:.2f}")
 
     text_parts = []
 
@@ -69,12 +74,39 @@ def transcribe_file(
     return " ".join(text_parts).strip()
 
 
+class VoiceCommandProcessor:
+    def __init__(self, model_size: str = "base", language: str = "es", device: str = "auto", compute_type: str = "float32"):
+        self.model_size = model_size
+        self.language = language
+        self.device = device
+        self.compute_type = compute_type
+
+    def process_voice_command(self, duration_s: float = 5.0) -> str:
+        audio = record_audio(duration_s)
+
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            wav_path = Path(tmp.name)
+
+        save_wav(audio, wav_path)
+
+        try:
+            final_text = transcribe_file(
+                audio_path=wav_path,
+                model_size=self.model_size,
+                language=self.language,
+                device=self.device,
+                compute_type=self.compute_type,
+            )
+            return final_text
+        finally:
+            wav_path.unlink(missing_ok=True)
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--duration", type=float, default=5.0)
     parser.add_argument("--model", default="base", help="tiny, base, small, medium, large-v3")
     parser.add_argument("--language", default=None, help="Example: en, es. Default: auto-detect")
-    parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+    parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--compute-type", default="int8", help="Example: int8, float16, float32")
     args = parser.parse_args()
 

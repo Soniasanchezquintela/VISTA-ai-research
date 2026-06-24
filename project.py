@@ -21,6 +21,10 @@ from object_identifier import ObjectIdentifier
 
 from scene_memory import ShelfSceneMemory, ProductDetection, ProductIdentification
 
+from voice_to_text import VoiceCommandProcessor
+
+from intent_classifier import SimpleIntentClassifier, Intent
+
 if sys.platform == "win32":
     import msvcrt
 else:
@@ -29,6 +33,9 @@ else:
     import tty
 
 scene_memory = ShelfSceneMemory()
+voice_processor = VoiceCommandProcessor()
+intent_classifier = SimpleIntentClassifier()
+
 
 class ThreadOutputRouter:
     """Route stdout/stderr to a file for one thread without affecting others."""
@@ -910,6 +917,32 @@ class CommandInterpreter(cmd.Cmd):
     def default(self, line: str) -> None:
         print(f"Unknown command: {line}")
         print("Type help or ? to list available commands.")
+
+    def speak(self, text: str) -> None:
+        """Speak the given text using the system's text-to-speech engine."""
+        # For the moment, simply print the text.
+        print(text)
+
+    def do_listen(self, arg: str) -> None:
+        """listen -- start listening for voice commands."""
+        print("Listening for voice commands for 5 seconds...")
+        detected_text = voice_processor.process_voice_command()
+        print(f"Detected voice command: {detected_text}")
+
+        intent, target, confidence = intent_classifier.classify(detected_text)
+        print(f"Intent: {intent}, Target: {target}, Confidence: {confidence:.2f}")
+
+        if intent == Intent.DESCRIBE_SCENE:
+            self.speak(scene_memory.describe_scene())
+        elif intent == Intent.DESCRIBE_POINTED_PRODUCT:
+            self.speak(scene_memory.describe_pointed_product())
+        elif intent == Intent.NAVIGATE_TO_TARGET:
+            if target is None:
+                self.speak("No he entendido el producto que estás buscando. ¿Puedes repetir?")
+            else:
+                self.speak(f"[SceneMemory] Navigating to target: {target}")
+        elif intent == Intent.UNKNOWN:
+            self.speak("No te he entendido. ¿Puedes repetir?")
 
 def main():
 

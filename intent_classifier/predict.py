@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-
+import torch
 from intent_classifier.classifier import IntentClassifier
 
 
@@ -41,6 +41,24 @@ def parse_args() -> argparse.Namespace:
         help="Torch device, for example cuda, mps, or cpu.",
     )
     return parser.parse_args()
+
+
+class SimpleIntentClassifier(IntentClassifier):
+    def __init__(self, confidence_threshold: float = 0.5, device: str = "auto"):
+        # If device is None, IntentClassifier will automatically select the best available device (cuda, mps, or cpu).
+        run_device = None
+        if device != "auto":
+            run_device = device
+        super().__init__(checkpoint_path=DEFAULT_CHECKPOINT_PATH, confidence_threshold=confidence_threshold, device=run_device)
+
+    def classify(self, text: str) -> tuple[str, str, float]:
+        """Classify the intent of the given text and return the intent, target and confidence."""
+        result = self.predict(text)
+        if result.target is None:
+            target = ""
+        else:
+            target = result.target
+        return result.intent.value, target, result.confidence
 
 
 def main() -> None:

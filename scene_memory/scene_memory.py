@@ -139,13 +139,55 @@ class ShelfSceneMemory:
         """
         Return currently visible confirmed objects.
         """
-        return []
+
+        # For the moment, we return all objects in memory, just for testing
+        return list(self.tracks.values())
 
     def describe_scene(self) -> str:
         """
         Generate a structured scene description.
         """
-        return ""
+        visible_objects = self.get_visible_objects()
+        if len(visible_objects) == 0:
+            return "Nada a la vista. Está activada la cámara?"
+
+        # NURIA: put here your describing scene code based on your LLM.
+        # This is just a simple example that enumerates the detected products
+        # with the following rules:
+        # - if the product is unknown, we don't describe it, we count how many are there and say it.
+        # - if we have several known products that are identical, we group them and only say it once.
+        description = "La escena contiene "
+        described_sku_ids: set[str] = set()
+        i = 0
+        unknown_count = 0
+        for track in visible_objects:
+            if track.best_sku_id == "unknown":
+                unknown_count += 1
+                continue
+            if track.best_sku_id in described_sku_ids:
+                continue
+
+            described_sku_ids.add(track.best_sku_id)
+            if i > 0:
+                description += ", "
+            description += f"{track.description}"
+            i += 1
+        description += "."
+        if unknown_count > 0:
+            description += " Además, hay " + f"{unknown_count} productos que no reconozco."
+        return description
+
+    def describe_pointed_product(self) -> str:
+        """
+        Generate a description of the product the user is pointing at.
+        """
+        touched_object = self.get_touched_object()
+        if touched_object is None:
+            return "Mano no detectada o el producto no está claro. Intenta a apartar la mano brevemente y vuelve a intentarlo."
+
+        # NURIA: put here your describing pointed product code based on your LLM.
+        # This is just a simple example that describes the detected product.
+        return f"El producto que está señalando es {touched_object.description}."
 
     def forget_old_tracks(self) -> None:
         """

@@ -32,6 +32,7 @@ _TARGET_PATTERNS = [
     r"d[oó]nde puedo coger (?:el |la |los |las )?(?P<target>.+)",
     r"ay[uú]dame a encontrar (?:el |la |los |las )?(?P<target>.+)",
     r"estoy buscando (?:el |la |los |las )?(?P<target>.+)",
+    r"quiero (?P<target>.+)",
     r"quiero encontrar (?:el |la |los |las )?(?P<target>.+)",
     r"necesito (?:el |la |los |las )?(?P<target>.+)",
     r"ll[eé]vame (?:al |a la |a los |a las )?(?P<target>.+)",

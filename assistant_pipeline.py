@@ -76,11 +76,12 @@ def product_name(record: dict) -> str:
     return "the detected product"
 
 
-def scene_product_name(record: dict) -> str | None:
+def scene_product_name(record: dict) -> tuple[str, bool] | None:
     product = record.get("product") or {}
-    if product.get("is_known") and product.get("description"):
-        return product["description"]
-    return None
+    description = product.get("description")
+    if not description:
+        return None
+    return description, bool(product.get("is_known"))
 
 
 def position_text(record: dict) -> str:
@@ -301,14 +302,27 @@ def describe_horizontal_position(center_x: float, image_width: int) -> str:
     return ["left", "center", "right"][horizontal_index]
 
 
-def summarize_product_counts(names: list[str], unknown_count: int) -> str:
+def format_counted_names(names: list[str], possible: bool = False) -> list[str]:
     parts = []
     counts = Counter(names)
     for name, count in counts.most_common():
+        label = f"possible {name}" if possible else name
         if count == 1:
-            parts.append(name)
+            parts.append(label)
         else:
-            parts.append(f"{count} {name}")
+            parts.append(f"{count} {label}")
+
+    return parts
+
+
+def summarize_product_counts(
+    known_names: list[str],
+    possible_names: list[str],
+    unknown_count: int,
+) -> str:
+    parts = []
+    parts.extend(format_counted_names(known_names))
+    parts.extend(format_counted_names(possible_names, possible=True))
 
     if unknown_count:
         if unknown_count == 1:
@@ -422,14 +436,22 @@ def describe_scene(detections: dict) -> str:
             for record in records
             if (record.get("shelf_position") or {}).get("shelf_index") == shelf["shelf_index"]
         ]
-        names = [
-            name
-            for name in (scene_product_name(record) for record in shelf_records)
-            if name is not None
-        ]
-        unknown_count = len(shelf_records) - len(names)
+        known_names = []
+        possible_names = []
+        for record in shelf_records:
+            scene_name = scene_product_name(record)
+            if scene_name is None:
+                continue
+
+            name, is_known = scene_name
+            if is_known:
+                known_names.append(name)
+            else:
+                possible_names.append(name)
+
+        unknown_count = len(shelf_records) - len(known_names) - len(possible_names)
         shelf_parts.append(
-            f"{shelf['label']}: {summarize_product_counts(names, unknown_count)}"
+            f"{shelf['label']}: {summarize_product_counts(known_names, possible_names, unknown_count)}"
         )
 
     return "I detected " + str(len(shelves)) + " shelves. " + "; ".join(shelf_parts) + "."

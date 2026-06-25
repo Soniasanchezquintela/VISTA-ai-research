@@ -85,38 +85,6 @@ def install_thread_output_routers() -> tuple[ThreadOutputRouter, ThreadOutputRou
 
     return _stdout_router, _stderr_router
 
-"""
-def handle_user_command(text: str) -> None:
-    result = intent_classifier.predict(text)
-
-    if result.intent == Intent.DESCRIBE_SCENE:
-        describe_scene()
-
-    elif result.intent == Intent.DESCRIBE_POINTED_PRODUCT:
-        describe_pointed_product()
-
-    elif result.intent == Intent.NAVIGATE_TO_TARGET:
-        if result.target is None:
-            ask_user_for_target()
-        else:
-            navigate_to_target(result.target)
-
-    elif result.intent == Intent.CONFIRM_TARGET_PRESENT:
-        if result.target is None:
-            ask_user_for_target()
-        else:
-            confirm_target_present(result.target)
-
-    elif result.intent == Intent.GET_PRICE:
-        get_price_of_pointed_product()
-
-    elif result.intent == Intent.READ_TEXT:
-        read_visible_text()
-
-    else:
-        say("Sorry, I did not understand.")
-"""
-
 
 def is_window_open(window_name: str) -> bool:
     try:
@@ -332,25 +300,34 @@ def execute_pipeline(frame, object_detector, hand_detector, object_identifier, t
 
 
 def process_image(image_path: str, save: bool = False) -> int:
-    image = cv2.imread(str(image_path))
-    if image is None:
+    frame = cv2.imread(str(image_path))
+    if frame is None:
         raise ValueError(f"Cannot open image file: {image_path}")
 
     detector = ObjectDetector()
     hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
     object_identifier = ObjectIdentifier()
 
-    detections, hand_detection, identifications = execute_pipeline(image, detector, hand_detector, object_identifier)
+    detections, hand_detection, identifications = execute_pipeline(frame, detector, hand_detector, object_identifier)
+
+
+    scene_memory.update(
+        0, 
+        detections, 
+        identifications, 
+        None if not hand_detection.found else hand_detection.touched_point)    
  
+    annotated_frame = scene_memory.annotate_image(frame)
+
     if save:
         # Save annotated image
         output_path = Path(f"{Path(image_path).stem}_pred.jpg")
-        cv2.imwrite(str(output_path), preview_image)
+        cv2.imwrite(str(output_path), annotated_frame)
         print(f"Saved annotated image to: {output_path}")
 
     window_name = "Product Detection"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.imshow(window_name, preview_image)
+    cv2.imshow(window_name, annotated_frame)
     print("Press any key to close the preview window.")
     wait_for_preview_close(window_name)
 
@@ -793,6 +770,31 @@ class CommandInterpreter(cmd.Cmd):
                         self.webcam_stop_event = None
                         self.webcam_running = False
                     self._webcam_lock.notify_all()
+
+    def do_process_image(self, arg: str) -> None:
+        """process_image <image_path>"""
+        parts = shlex.split(arg)
+
+        if len(parts) != 1:
+            print("Usage: process_image <image_path>")
+            return
+
+        # If path is relative, resolve it against the current working directory
+        image_path = Path(parts[0])
+        if not image_path.is_absolute():
+            image_path = Path.cwd() / image_path
+
+        if not image_path.exists():
+            print(f"Error: image file does not exist: {image_path}")
+            return
+
+        print(f"Processing image: {image_path}")
+        image_thread = threading.Thread(
+            target=process_image,
+            args=(str(image_path),),
+            name="image-processing",
+        )
+        image_thread.start()
 
     def do_process_video(self, arg: str) -> None:
             """process_video <video_path>"""

@@ -19,7 +19,8 @@ import cv2
 from hand_detector import HandDetector
 from object_identifier import ObjectIdentifier
 
-from scene_memory import ShelfSceneMemory, ProductDetection, ProductIdentification
+from scene_memory import ProductDetection, ProductIdentification
+from scene_memory.tracked_scene_memory import TrackedShelfSceneMemory as ShelfSceneMemory
 
 from voice_to_text import VoiceCommandProcessor
 

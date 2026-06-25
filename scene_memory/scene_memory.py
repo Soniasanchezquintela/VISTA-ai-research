@@ -183,7 +183,7 @@ class ShelfSceneMemory:
         """
         touched_object = self.get_touched_object()
         if touched_object is None:
-            return "Mano no detectada o el producto no está claro. Intenta a apartar la mano brevemente y vuelve a intentarlo."
+            return "Mano no detectada o el producto no está claro. Intenta apartar la mano brevemente y vuelve a intentarlo."
 
         # NURIA: put here your describing pointed product code based on your LLM.
         # This is just a simple example that describes the detected product.

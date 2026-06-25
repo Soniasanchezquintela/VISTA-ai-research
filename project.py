@@ -946,6 +946,16 @@ class CommandInterpreter(cmd.Cmd):
         elif intent == Intent.UNKNOWN:
             self.speak("No te he entendido. ¿Puedes repetir?")
 
+    def do_describe_scene(self, arg: str) -> None:
+        """Describe the current scene."""
+        description = scene_memory.describe_scene()
+        self.speak(description)
+
+    def do_describe_pointed_product(self, arg: str) -> None:
+        """Describe the product that is currently being pointed at."""
+        description = scene_memory.describe_pointed_product()
+        self.speak(description)
+
 def main():
 
     args = parse_args()

@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import cmd
 from contextlib import contextmanager
+import cv2
 import queue
 import shlex
 import shutil
@@ -15,7 +16,6 @@ import threading
 print("Loading required modules...", flush=True)
 
 from object_detector import ObjectDetector
-import cv2
 from hand_detector import HandDetector
 from object_identifier import ObjectIdentifier
 
@@ -664,8 +664,9 @@ def process_webcam(
         scene_memory.update(
             frame_count, 
             detections, 
-            identifications, 
-            None if not hand_detection.found else hand_detection.touched_point)
+            identifications,
+            hand_detection)
+
 
         # Display annotated frame
         # if hand_detection.annotated_image is not None:

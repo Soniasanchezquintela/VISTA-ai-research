@@ -19,7 +19,7 @@ import numpy as np
 
 from .types import ProductDetection, ProductIdentification, TrackedObject
 from .scene_memory import annotate_box
-
+from hand_detector import draw_hand_landmarks, HandDetection
 
 # ── IoU helpers ───────────────────────────────────────────────────────────────
 
@@ -97,12 +97,14 @@ class TrackedShelfSceneMemory:
         self.next_track_id = 1
         self.touched_track_id: int | None = None
         self.touch_point: tuple[int, int] | None = None
+        self.last_hand_detection: HandDetection | None = None
 
     def reset(self) -> None:
         self.tracks.clear()
         self.next_track_id = 1
         self.touched_track_id = None
         self.touch_point = None
+        self.last_hand_detection = None
 
     # ── Update ────────────────────────────────────────────────────────────────
 
@@ -111,9 +113,11 @@ class TrackedShelfSceneMemory:
         frame_index: int,
         detections: list[ProductDetection],
         identifications: list[ProductIdentification],
-        finger_tip: tuple[int, int] | None = None,
+        hand_detection: HandDetection,
     ) -> None:
-        self.touch_point = finger_tip
+        
+        self.touch_point = None if not hand_detection.found else hand_detection.touched_point
+        self.last_hand_detection = hand_detection
 
         # Build a lookup from bbox → identification for this frame
         id_by_bbox: dict[tuple, ProductIdentification] = {
@@ -228,14 +232,14 @@ class TrackedShelfSceneMemory:
 
         # ── Resolve which track the finger is touching ─────────────────────
         self.touched_track_id = None
-        if finger_tip is not None:
-            self._resolve_touched_track(finger_tip)
+        if self.touch_point is not None:
+            self._resolve_touched_track(self.touch_point)
 
         print(
             f"[SceneMemory] frame={frame_index} | "
             f"tracks={len(self.tracks)} | "
             f"touched={self.touched_track_id} | "
-            f"finger={finger_tip}"
+            f"finger={self.touch_point}"
         )
 
     # ── Pointing resolution ───────────────────────────────────────────────────
@@ -367,7 +371,8 @@ class TrackedShelfSceneMemory:
 
             annotated = annotate_box(annotated, track.bbox, str(track.track_id), color)
 
-        if self.touch_point is not None:
+        if self.touch_point is not None and self.last_hand_detection is not None:
+            draw_hand_landmarks(annotated, self.last_hand_detection.hand_landmarks)
             cv2.circle(annotated, self.touch_point, radius=10, color=(0, 165, 255), thickness=-1)
 
         return annotated

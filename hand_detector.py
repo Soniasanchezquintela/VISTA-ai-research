@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import mediapipe as mp
 import numpy as np
 import cv2
+from mediapipe.tasks.python.components.containers import landmark
 
 HAND_CONNECTIONS = [
     (0, 1), (1, 2), (2, 3), (3, 4),        # thumb
@@ -18,15 +19,16 @@ class HandDetection:
     found: bool
     touched_point: tuple[int, int] # x,y coordinate of the fingertip, if found
     annotated_image: np.ndarray | None
+    hand_landmarks: list[landmark.NormalizedLandmark]
 
 
-def draw_hand_landmarks(image_bgr, hand_landmarks):
+def draw_hand_landmarks(image_bgr, hand_landmarks: list[landmark.NormalizedLandmark]):
     height, width, _ = image_bgr.shape
 
     points = []
-    for landmark in hand_landmarks:
-        x = int(landmark.x * width)
-        y = int(landmark.y * height)
+    for mark in hand_landmarks:
+        x = int(mark.x * width)
+        y = int(mark.y * height)
         points.append((x, y))
 
     # Draw connections
@@ -111,6 +113,7 @@ class HandDetector:
         touch_point = (0, 0)
         annotated_frame = None
         height, width, _ = frame.shape
+        hand_landmarks = []
 
         # Convert to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -135,8 +138,7 @@ class HandDetector:
             annotated_frame = frame.copy()
 
             # Draw hand landmarks and connections without protobuf dependency.
-            for hand_landmarks in detection_result.hand_landmarks:
-                draw_hand_landmarks(annotated_frame, hand_landmarks)
+            draw_hand_landmarks(annotated_frame, hand_landmarks)
 
             # Draw a blue circle at the touch point for visualization
             cv2.circle(annotated_frame, touch_point, radius=10, color=(255, 0, 0), thickness=-1)
@@ -155,5 +157,9 @@ class HandDetector:
             print("[HandDetector] Hand detected in image." if found else "[HandDetector] No hand detected in image.")
 
 
-        return HandDetection(found=found, touched_point=touch_point, annotated_image=annotated_frame)
+        return HandDetection(
+            found=found,
+            touched_point=touch_point,
+            annotated_image=annotated_frame,
+            hand_landmarks=hand_landmarks)
     

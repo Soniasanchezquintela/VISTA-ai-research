@@ -33,11 +33,10 @@ def load_product_index() -> dict[str, int]:
 
     return full_products
 
-def sanity_check(dataset: str) -> bool:
+def sanity_check(dataset_path: Path) -> bool:
     """
     Check if the dataset path exists and contains at least one image file.
     """
-    dataset_path = Path(dataset)
     if not dataset_path.exists():
         print(f"Error: Dataset path '{dataset_path}' does not exist.")
         return False
@@ -85,6 +84,19 @@ def sanity_check(dataset: str) -> bool:
 
     return sku_ids_ok and json_files_ok
 
+def get_image_json_file(image_path: Path) -> dict:
+    """
+    Given an image path, return the associated JSON data as a dictionary.
+    """
+    json_path = image_path.with_suffix(".json")
+    if not json_path.exists():
+        raise FileNotFoundError(f"JSON file '{json_path}' does not exist.")
+
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    return data
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Evaluate metrics for object detection and identification."
@@ -102,14 +114,19 @@ def main():
 
     args = parse_args()
 
-    if not sanity_check(args.dataset):
+    dataset_path = Path(args.dataset)
+
+    if not sanity_check(dataset_path):
         return
 
-    dataset_path = Path(args.dataset)
-    if not dataset_path.exists():
-        print(f"Error: Dataset path '{dataset_path}' does not exist.")
-        return
-    
+    print("Loading required modules...", flush=True)
+
+    from object_detector import ObjectDetector
+    from object_identifier import ObjectIdentifier
+
+    object_detector = ObjectDetector()
+    object_identifier = ObjectIdentifier()
+   
     # Loop through all images in the dataset directory
     for image_path in dataset_path.glob("*.jpg"):
         frame = cv2.imread(str(image_path))
@@ -118,23 +135,23 @@ def main():
             continue
 
         # Load its associated json file with the labeled data
-        json_path = image_path.with_suffix(".json")
-        if not json_path.exists():
-            print(f"Error: JSON file '{json_path}' does not exist. Skipping.")
-            continue
+        data = get_image_json_file(image_path.with_suffix(".json"))
 
-        print(f"Processing image: {image_path} with data from: {json_path}")
+        print(f"Processing image: {image_path}")
+        detections, _ = object_detector.detect_from_frame(frame, verbose=True)
+        identifications = object_identifier.identify_boxes(frame, detections, verbose=True)
 
+        print("Number of detections:", len(detections))
+        print("Number of identifications:", len(identifications))
 
-    # print("Loading required modules...", flush=True)
-
-    # from object_detector import ObjectDetector
-    # from hand_detector import HandDetector
-    # from object_identifier import ObjectIdentifier
-
-    # detector = ObjectDetector()
-    # hand_detector = HandDetector(mode=HandDetector.Mode.IMAGE)
-    # object_identifier = ObjectIdentifier()
+        # data["boxes"] contains a list of boxes with the following format:
+        # "class": 4,
+        # "x": 73.57377049180329,
+        # "y": 688.9180327868853,
+        # "w": 708.983606557377,
+        # "h": 1772.4590163934427
+        # Compare these boxes with the detected boxes
+        
 
     # detections, hand_detection, identifications = execute_pipeline(frame, detector, hand_detector, object_identifier)
 

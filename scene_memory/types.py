@@ -2,10 +2,10 @@
 from dataclasses import dataclass
 
 
-@dataclass
-class ProductDetection:
-    bbox: tuple[float, float, float, float]
-    confidence: float
+# @dataclass
+# class ProductDetection:
+#     bbox: tuple[float, float, float, float]
+#     confidence: float
 
 
 @dataclass

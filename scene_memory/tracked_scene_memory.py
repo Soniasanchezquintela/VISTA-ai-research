@@ -17,9 +17,10 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from .types import ProductDetection, ProductIdentification, TrackedObject
+from .types import ProductIdentification, TrackedObject
 from .scene_memory import annotate_box
 from hand_detector import draw_hand_landmarks, HandDetection
+from object_detector import ProductDetection
 
 # ── IoU helpers ───────────────────────────────────────────────────────────────
 

@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 from pathlib import Path
+from contextlib import contextmanager
 import argparse
 import cmd
-from contextlib import contextmanager
 import cv2
 import queue
 import shlex
@@ -12,20 +12,6 @@ import sys
 import tempfile
 import time
 import threading
-
-print("Loading required modules...", flush=True)
-
-from object_detector import ObjectDetector
-from hand_detector import HandDetector
-from object_identifier import ObjectIdentifier
-
-from scene_memory import ProductDetection, ProductIdentification
-from scene_memory.tracked_scene_memory import TrackedShelfSceneMemory as ShelfSceneMemory
-
-from voice_to_text import VoiceCommandProcessor
-
-from intent_classifier import SimpleIntentClassifier, Intent
-
 if sys.platform == "win32":
     import msvcrt
 else:
@@ -33,6 +19,18 @@ else:
     import termios
     import tty
 
+print("Loading required modules...", flush=True)
+
+from object_detector import ObjectDetector
+from hand_detector import HandDetector
+from object_identifier import ObjectIdentifier
+from scene_memory import ProductIdentification
+from scene_memory.tracked_scene_memory import TrackedShelfSceneMemory as ShelfSceneMemory
+from voice_to_text import VoiceCommandProcessor
+from intent_classifier import SimpleIntentClassifier, Intent
+
+
+# Global objects for the interactive CLI and threaded webcam processing
 scene_memory = ShelfSceneMemory()
 voice_processor = VoiceCommandProcessor()
 intent_classifier = SimpleIntentClassifier()
@@ -73,7 +71,6 @@ class ThreadOutputRouter:
 _stdout_router = None
 _stderr_router = None
 
-
 def install_thread_output_routers() -> tuple[ThreadOutputRouter, ThreadOutputRouter]:
     global _stdout_router, _stderr_router
 
@@ -86,13 +83,11 @@ def install_thread_output_routers() -> tuple[ThreadOutputRouter, ThreadOutputRou
 
     return _stdout_router, _stderr_router
 
-
 def is_window_open(window_name: str) -> bool:
     try:
         return cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1
     except cv2.error:
         return False
-
 
 def close_window_if_open(window_name: str) -> None:
     if not is_window_open(window_name):
@@ -101,7 +96,6 @@ def close_window_if_open(window_name: str) -> None:
         cv2.destroyWindow(window_name)
     except cv2.error:
         pass
-
 
 def wait_for_preview_close(window_name: str) -> None:
     old_terminal_settings = None
@@ -128,177 +122,17 @@ def wait_for_preview_close(window_name: str) -> None:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_terminal_settings)
         close_window_if_open(window_name)
 
-
-def annotate_box(frame, boxes, index: int, color):
-    annotated_frame = frame
-    frame_height, frame_width = annotated_frame.shape[:2]
-    line_thickness = max(3, min(frame_height, frame_width) // 200)
-    font_scale = max(1.2, min(frame_height, frame_width) / 500)
-    font_thickness = max(3, line_thickness)
-
-    box = boxes[index]
-    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-    x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
-
-    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, line_thickness)
-
-    label = str(index)
-    (label_width, label_height), baseline = cv2.getTextSize(
-        label,
-        cv2.FONT_HERSHEY_SIMPLEX,
-        font_scale,
-        font_thickness,
-    )
-    label_top = max(0, y1 - label_height - baseline - 16)
-    label_bottom = label_top + label_height + baseline + 12
-    label_right = x1 + label_width + 20
-
-    cv2.rectangle(
-        annotated_frame,
-        (x1, label_top),
-        (label_right, label_bottom),
-        color,
-        -1,
-    )
-
-    label_origin = (x1 + 10, label_bottom - baseline - 6)
-    cv2.putText(
-        annotated_frame,
-        label,
-        label_origin,
-        cv2.FONT_HERSHEY_SIMPLEX,
-        font_scale,
-        (0, 0, 0),
-        font_thickness,
-        cv2.LINE_AA,
-    )
-
-    return annotated_frame
-
-def accept_identification(score: float, confidence: float) -> bool:
-    if confidence >= 0.90:
-        return score >= 0.60
-
-    if confidence >= 0.75:
-        return score >= ObjectIdentifier.MIN_SCORE
-
-    return False
-
-def box_xyxy(box) -> tuple[float, float, float, float]:
-    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-    return x1, y1, x2, y2
-
-def box_midpoint(box) -> tuple[float, float]:
-    x1, y1, x2, y2 = box_xyxy(box)
-    return ((x1 + x2) / 2, (y1 + y2) / 2)
-
-def box_area(box) -> float:
-    x1, y1, x2, y2 = box_xyxy(box)
-    return max(0, x2 - x1) * max(0, y2 - y1)
-
-def box_contains_point(px, py, box) -> bool:
-    x1, y1, x2, y2 = box_xyxy(box)
-    return x1 <= px <= x2 and y1 <= py <= y2
-
-def point_to_box_distance(px, py, box):
-    x1, y1, x2, y2 = box_xyxy(box)
-
-    dx = max(x1 - px, 0, px - x2)
-    dy = max(y1 - py, 0, py - y2)
-
-    return (dx * dx + dy * dy) ** 0.5
-
-def select_touched_box(touch_point, boxes, max_distance_px):
-    px, py = touch_point
-
-    containing_boxes = [box for box in boxes if box_contains_point(px, py, box)]
-    if containing_boxes:
-        return min(containing_boxes, key=box_area)
-
-    best_box = None
-    best_distance = float("inf")
-
-    for box in boxes:
-        distance = point_to_box_distance(px, py, box)
-
-        if distance < best_distance:
-            best_distance = distance
-            best_box = box
-
-    if best_box is None:
-        return None
-
-    if best_distance > max_distance_px:
-        return None
-
-    return best_box
-
 def execute_pipeline(frame, object_detector, hand_detector, object_identifier, timestamp_ms=0, verbose=True):
     # Run object detection
-    boxes, _ = object_detector.detect_from_frame(frame, verbose=verbose)
-    boxes = sorted(boxes, key=box_midpoint)
-
-    # Convert boxes to ProductDetection objects
-    detections: list[ProductDetection] = []
-    for box in boxes:
-        x1, y1, x2, y2 = box_xyxy(box)
-        confidence = float(box.conf.item())
-        detections.append(ProductDetection(bbox=(x1, y1, x2, y2), confidence=confidence))
+    detections, _ = object_detector.detect_from_frame(frame, verbose=verbose)
 
     # Run hand detection
     hand_detection = hand_detector.detect_from_frame(frame, timestamp_ms=timestamp_ms, verbose=verbose)
- 
-    #touched_box = select_touched_box(touch_point, boxes, max_distance_px=50) if found else None
 
+    # Identify products in the detected boxes
     identifications = object_identifier.identify_boxes(frame, detections, verbose=verbose)
 
-    """
-    for i, box in enumerate(boxes):
-        x1, y1, x2, y2 = box_xyxy(box)
-
-        # Convert to int
-        x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
-
-        # Optional but recommended: clamp coordinates to image size
-        h, w = frame.shape[:2]
-        x1 = max(0, min(x1, w))
-        x2 = max(0, min(x2, w))
-        y1 = max(0, min(y1, h))
-        y2 = max(0, min(y2, h))
-
-        crop = frame[y1:y2, x1:x2]
-
-        if crop.size == 0:
-            if verbose:
-                print(f"Skipping empty crop for box {i}: {(x1, y1, x2, y2)}")
-            continue
-
-        cropped_images.append(crop)
-
-        # send cropped image to object identifier
-        result_identification = object_identifier.identify_product(crop, k=5, verbose=verbose)
-
-        product = result_identification["product"]
-
-        description = product.get("description", "unknown")
-        category = product.get("category", "unknown")
-
-        #color = (0, 255, 0) if accept_identification(result_identification["score"], result_identification["confidence"]) else (0, 0, 255)
-        color = (0, 255, 0) if result_identification["accepted"] else (0, 0, 255)
-        if touched_box is not None and box is touched_box:
-            color = (255, 0, 0)
-        annotate_box(preview_image, boxes, i, color)
-        #if not accept_identification(result_identification["score"], result_identification["confidence"]):
-        if not result_identification["accepted"]:
-            if verbose:
-                print(f"[{i}] Unknown product, best: {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
-            continue
-
-        if verbose:
-            print(f"[{i}] {description} ({category}), Score {result_identification['score']:.4f}, Confidence {result_identification['confidence']:.4f}")
-    """
     return detections, hand_detection, identifications
-
 
 def process_image(image_path: str, save: bool = False) -> int:
     frame = cv2.imread(str(image_path))
@@ -316,7 +150,7 @@ def process_image(image_path: str, save: bool = False) -> int:
         0, 
         detections, 
         identifications, 
-        None if not hand_detection.found else hand_detection.touched_point)    
+        hand_detection)    
  
     annotated_frame = scene_memory.annotate_image(frame)
 
@@ -424,16 +258,25 @@ def process_video(video_path: str, save: bool = False) -> int:
         
         # Run inference on frame
         timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))
-        preview_image, cropped_images, detections = execute_pipeline(
+        detections, hand_detection, identifications = execute_pipeline(
             frame,
             detector,
             hand_detector,
             object_identifier,
             timestamp_ms,
+            verbose=False,
         )
 
+        scene_memory.update(
+            frame_count, 
+            detections, 
+            identifications,
+            hand_detection)
+
+        annotated_frame = scene_memory.annotate_image(frame)
+
         # Display annotated frame
-        cv2.imshow(window_name, preview_image)
+        cv2.imshow(window_name, annotated_frame)
         
         # Process GUI events so the window updates and can receive key presses
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -445,7 +288,7 @@ def process_video(video_path: str, save: bool = False) -> int:
         
         # Write frame to output video
         if save and out:
-            out.write(preview_image)
+            out.write(annotated_frame)
         
         # Print progress
         if frame_count % 30 == 0:
@@ -962,7 +805,7 @@ def main():
 
     args = parse_args()
 
-    counter = sum([bool(args.image), bool(args.video), args.webcam is not None])
+    counter = sum([bool(args.image), bool(args.video), bool(args.webcam)])
     if counter > 1:
         print("Error: Please provide only one of --image, --video, or --webcam.")
         exit(1)
@@ -977,7 +820,7 @@ def main():
     if args.video:
         exit(process_video(args.video, save=args.save))
 
-    if args.webcam is not None:
+    if args.webcam:
         exit(process_webcam(args.webcam, save=args.save))
 
 if __name__ == "__main__":

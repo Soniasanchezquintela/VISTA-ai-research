@@ -1,5 +1,5 @@
-from .types import ProductDetection, ProductIdentification, TrackedObject
-
+from .types import ProductIdentification, TrackedObject
+from object_detector import ProductDetection
 import cv2
 
 

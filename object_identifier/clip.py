@@ -7,8 +7,8 @@ import open_clip
 import torch
 from PIL import Image
 
-from scene_memory.types import ProductIdentification, ProductDetection
-
+from scene_memory.types import ProductIdentification
+from object_detector import ProductDetection
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "products.sqlite"

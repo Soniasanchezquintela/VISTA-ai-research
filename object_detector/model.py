@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from ultralytics import YOLO
 
@@ -26,11 +27,26 @@ def filter_border_boxes(boxes, img_width, img_height, border = 20):
         filtered.append(box)
     return filtered
 
+def box_xyxy(box) -> tuple[float, float, float, float]:
+    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+    return x1, y1, x2, y2
+
+def box_midpoint(box) -> tuple[float, float]:
+    x1, y1, x2, y2 = box_xyxy(box)
+    return ((x1 + x2) / 2, (y1 + y2) / 2)
+
+
+@dataclass
+class ProductDetection:
+    bbox: tuple[float, float, float, float]
+    confidence: float
+
+
 class ObjectDetector:
     def __init__(self, model_path: str = DEFAULT_MODEL_PATH):
         self.model = YOLO(model_path)
 
-    def _detect(self, source, enable_filter: bool, verbose: bool = True) -> tuple[list, any]:
+    def _detect(self, source, enable_filter: bool, verbose: bool = True) -> tuple[list[ProductDetection], any]:
         results = self.model.predict(
             source=source,
             imgsz=IMG_SIZE,
@@ -47,6 +63,10 @@ class ObjectDetector:
 
         # results is a list; for one image, take results[0]
         result = results[0]
+        if result.boxes is None or len(result.boxes) == 0:
+            if verbose:
+                print("[ObjectDetector] No products detected.")
+            return [], source
 
         # Print detection summary
         num_boxes = len(result.boxes)
@@ -61,9 +81,18 @@ class ObjectDetector:
         # Draw boxes on the image
         annotated = result.plot()
 
-        return result.boxes, annotated
+        sorted_boxes = sorted(result.boxes, key=box_midpoint)
 
-    def detect_from_file(self, image_file: str, enable_filter: bool = True) -> tuple[list, any]:
+        detections: list[ProductDetection] = []
+        for box in sorted_boxes:
+            x1, y1, x2, y2 = box_xyxy(box)
+            confidence = float(box.conf.item())
+            detections.append(ProductDetection(bbox=(x1, y1, x2, y2), confidence=confidence))
+
+
+        return detections, annotated
+
+    def detect_from_file(self, image_file: str, enable_filter: bool = True) -> tuple[list[ProductDetection], any]:
         image_path = Path(image_file)
 
         if not image_path.exists():
@@ -71,7 +100,7 @@ class ObjectDetector:
 
         return self._detect(str(image_path), enable_filter=enable_filter)
 
-    def detect_from_frame(self, frame, enable_filter: bool = True, verbose: bool = True) -> tuple[list, any]:
+    def detect_from_frame(self, frame, enable_filter: bool = True, verbose: bool = True) -> tuple[list[ProductDetection], any]:
         return self._detect(frame, enable_filter=enable_filter, verbose=verbose)
 
 

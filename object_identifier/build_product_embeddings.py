@@ -106,7 +106,7 @@ def main() -> None:
     embeddings = []
     product_image_records = []
 
-    image_paths = sorted(IMAGE_DIR.glob("*.jpg"))
+    image_paths = sorted(IMAGE_DIR.glob("*.jpg")) + sorted(IMAGE_DIR.glob("*.jpeg")) + sorted(IMAGE_DIR.glob("*.png"))
 
     for embedding_index, image_path in enumerate(image_paths):
         sku_id = infer_sku_id_from_filename(image_path)

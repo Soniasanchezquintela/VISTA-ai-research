@@ -58,5 +58,11 @@
     "sku_id": "yosoy_barista_avena_1l",
     "image_path": "product_db/images/yosoy_barista_avena_1l_003.jpg",
     "embedding_index": 9
+  },
+  {
+    "image_id": "leche_ato_semidesnatada_1l_001",
+    "sku_id": "leche_ato_semidesnatada_1l",
+    "image_path": "product_db/images/leche_ato_semidesnatada_1l_001.png",
+    "embedding_index": 10
   }
 ]

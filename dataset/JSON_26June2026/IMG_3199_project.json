@@ -1,0 +1,297 @@
+{
+  "version": 1,
+  "imageName": "IMG_3199",
+  "imageWidth": 4284,
+  "imageHeight": 5712,
+  "classes": [
+    {
+      "name": "bebidavegetal_ametller_orxata_1l",
+      "color": "#f97316"
+    },
+    {
+      "name": "bebidavegetal_almendrola_almendra_1l",
+      "color": "#eab308"
+    },
+    {
+      "name": "bebidavegetal_yosoy_arroz_avellanas_1l",
+      "color": "#22c55e"
+    },
+    {
+      "name": "bebidavegetal_yosoy_arroz_coco_1l",
+      "color": "#06b6d4"
+    },
+    {
+      "name": "bebidavegetal_elements_coco_1l",
+      "color": "#06b6d4"
+    },
+    {
+      "name": "bebidavegetal_yosoy_almendra_cerozucar_1l",
+      "color": "#3b82f6"
+    },
+    {
+      "name": "bebidavegetal_ametller_ametlla_cerosucre_barista_1l",
+      "color": "#8b5cf6"
+    },
+    {
+      "name": "bebidavegetal_almendrola_almendra_sinazucar_barista_1l",
+      "color": "#ec4899"
+    },
+    {
+      "name": "bebidavegetal_essencials_ametller_civada_1l",
+      "color": "#f43f5e"
+    },
+    {
+      "name": "begudavegetal_ametller_ametlla_cerosucre_calci_6l",
+      "color": "#10b981"
+    },
+    {
+      "name": "begudavegetal_ametller_ametlla_cerosucre_calci_1l",
+      "color": "#0ea5e9"
+    },
+    {
+      "name": "bebidavegetal_yosoy_soja_ceroazucar_barista_1l",
+      "color": "#a855f7"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_matxa_1l",
+      "color": "#84cc16"
+    },
+    {
+      "name": "bebidavegetal_yosoy_soja_ceroazucar_1l",
+      "color": "#f59e0b"
+    },
+    {
+      "name": "bebidavegetal_ametller_arros_1l",
+      "color": "#14b8a6"
+    },
+    {
+      "name": "bebidavegetal_oatly_avena_nosugar_1l",
+      "color": "#fb7185"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_eco_1l",
+      "color": "#fbbf24"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_ecologico_1l",
+      "color": "#4ade80"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_1l",
+      "color": "#22d3ee"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_cerosucre_1l",
+      "color": "#a78bfa"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_calcio_1l",
+      "color": "#ef4444"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_calci_1l",
+      "color": "#f97316"
+    },
+    {
+      "name": "bebidavegetal_oatly_avena_barista_1l",
+      "color": "#eab308"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_barista_1l",
+      "color": "#22c55e"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_barista_1l",
+      "color": "#06b6d4"
+    },
+    {
+      "name": "bebidavegetal_alpro_avena_barista_1l",
+      "color": "#3b82f6"
+    },
+    {
+      "name": "bebidavegetal_yosoy_almendra_nueces_1l",
+      "color": "#8b5cf6"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_250Ml",
+      "color": "#ec4899"
+    },
+    {
+      "name": "bebidavegetal_oatly_avena_500ml",
+      "color": "#f43f5e"
+    },
+    {
+      "name": "bebidavegetal_yosoy_chocoavena_1l",
+      "color": "#10b981"
+    },
+    {
+      "name": "bebidavegetal_cacaolat_sinazucar_1l",
+      "color": "#0ea5e9"
+    },
+    {
+      "name": "bebidavegetal_cacaolat_original_1l",
+      "color": "#a855f7"
+    },
+    {
+      "name": "leche_lletnostra_desnatada_1l",
+      "color": "#84cc16"
+    },
+    {
+      "name": "leche_santagadea_cabra_semidesnatada_ecologica_1l",
+      "color": "#f59e0b"
+    },
+    {
+      "name": "leche_ato_semidesnatada_ecologica_1l",
+      "color": "#14b8a6"
+    }
+  ],
+  "boxes": [
+    {
+      "class": 32,
+      "x": 103.67213114754098,
+      "y": 601.9672131147541,
+      "w": 561.8360655737705,
+      "h": 1264.1311475409834
+    },
+    {
+      "class": 32,
+      "x": 672.1967213114755,
+      "y": 608.655737704918,
+      "w": 515.0163934426229,
+      "h": 1277.5081967213116
+    },
+    {
+      "class": 32,
+      "x": 1187.2131147540983,
+      "y": 615.344262295082,
+      "w": 548.4590163934427,
+      "h": 1264.1311475409836
+    },
+    {
+      "class": 28,
+      "x": 1715.6065573770493,
+      "y": 1257.4426229508197,
+      "w": 461.5081967213114,
+      "h": 601.9672131147543
+    },
+    {
+      "class": 28,
+      "x": 2197.1803278688526,
+      "y": 1310.9508196721313,
+      "w": 501.6393442622948,
+      "h": 615.344262295082
+    },
+    {
+      "class": 28,
+      "x": 2718.8852459016393,
+      "y": 1438.032786885246,
+      "w": 367.8688524590166,
+      "h": 501.639344262295
+    },
+    {
+      "class": 28,
+      "x": 2544.9836065573772,
+      "y": 882.8852459016393,
+      "w": 401.311475409836,
+      "h": 280.9180327868853
+    },
+    {
+      "class": 22,
+      "x": 1468.1311475409836,
+      "y": 2648.655737704918,
+      "w": 468.19672131147536,
+      "h": 1116.9836065573772
+    },
+    {
+      "class": 22,
+      "x": 1963.0819672131147,
+      "y": 2668.72131147541,
+      "w": 441.4426229508199,
+      "h": 1063.4754098360654
+    },
+    {
+      "class": 22,
+      "x": 2417.9016393442625,
+      "y": 2655.344262295082,
+      "w": 280.91803278688485,
+      "h": 976.5245901639346
+    },
+    {
+      "class": 22,
+      "x": 2779.0819672131147,
+      "y": 2662.032786885246,
+      "w": 361.1803278688526,
+      "h": 956.4590163934427
+    },
+    {
+      "class": 22,
+      "x": 3193.7704918032787,
+      "y": 2648.655737704918,
+      "w": 180.59016393442653,
+      "h": 862.8196721311479
+    },
+    {
+      "class": 25,
+      "x": 3722.1639344262294,
+      "y": 2635.27868852459,
+      "w": 481.57377049180377,
+      "h": 1110.2950819672133
+    },
+    {
+      "class": 24,
+      "x": 1488.1967213114754,
+      "y": 4414.426229508197,
+      "w": 461.5081967213116,
+      "h": 1009.9672131147536
+    },
+    {
+      "class": 24,
+      "x": 2377.7704918032787,
+      "y": 4200.393442622951,
+      "w": 394.62295081967204,
+      "h": 882.8852459016398
+    },
+    {
+      "class": 24,
+      "x": 2832.5901639344265,
+      "y": 4200.393442622951,
+      "w": 361.18032786885215,
+      "h": 896.2622950819677
+    },
+    {
+      "class": 33,
+      "x": 264.1967213114754,
+      "y": 2581.7704918032787,
+      "w": 581.9016393442623,
+      "h": 1130.3606557377052
+    },
+    {
+      "class": 33,
+      "x": 846.0983606557377,
+      "y": 2601.8360655737706,
+      "w": 655.4754098360656,
+      "h": 1143.7377049180327
+    },
+    {
+      "class": 34,
+      "x": 50.16393442622951,
+      "y": 4327.475409836065,
+      "w": 394.62295081967216,
+      "h": 1290.8852459016398
+    },
+    {
+      "class": 34,
+      "x": 464.8524590163935,
+      "y": 4327.475409836065,
+      "w": 448.13114754098353,
+      "h": 1277.5081967213118
+    },
+    {
+      "class": 34,
+      "x": 993.2459016393443,
+      "y": 4394.360655737705,
+      "w": 468.19672131147536,
+      "h": 1270.8196721311479
+    }
+  ]
+}

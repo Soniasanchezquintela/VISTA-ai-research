@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "imageName": "IMG_3194",
+  "imageWidth": 4284,
+  "imageHeight": 5712,
+  "classes": [
+    {
+      "name": "bebidavegetal_ametller_orxata_1l",
+      "color": "#f97316"
+    },
+    {
+      "name": "bebidavegetal_almendrola_almendra_1l",
+      "color": "#eab308"
+    },
+    {
+      "name": "bebidavegetal_yosoy_arroz_avellanas_1l",
+      "color": "#22c55e"
+    },
+    {
+      "name": "bebidavegetal_yosoy_arroz_coco_1l",
+      "color": "#06b6d4"
+    },
+    {
+      "name": "bebidavegetal_elements_coco_1l",
+      "color": "#06b6d4"
+    },
+    {
+      "name": "bebidavegetal_yosoy_almendra_cerozucar_1l",
+      "color": "#3b82f6"
+    },
+    {
+      "name": "bebidavegetal_ametller_ametlla_cerosucre_barista_1l",
+      "color": "#8b5cf6"
+    },
+    {
+      "name": "bebidavegetal_almendrola_almendra_sinazucar_barista_1l",
+      "color": "#ec4899"
+    },
+    {
+      "name": "bebidavegetal_essencials_ametller_civada_1l",
+      "color": "#f43f5e"
+    },
+    {
+      "name": "begudavegetal_ametller_ametlla_cerosucre_calci_6l",
+      "color": "#10b981"
+    },
+    {
+      "name": "begudavegetal_ametller_ametlla_cerosucre_calci_1l",
+      "color": "#0ea5e9"
+    },
+    {
+      "name": "bebidavegetal_yosoy_soja_ceroazucar_barista_1l",
+      "color": "#a855f7"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_matxa_1l",
+      "color": "#84cc16"
+    },
+    {
+      "name": "bebidavegetal_yosoy_soja_ceroazucar_1l",
+      "color": "#f59e0b"
+    },
+    {
+      "name": "bebidavegetal_ametller_arros_1l",
+      "color": "#14b8a6"
+    },
+    {
+      "name": "bebidavegetal_oatly_avena_nosugar_1l",
+      "color": "#fb7185"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_eco_1l",
+      "color": "#fbbf24"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_ecologico_1l",
+      "color": "#4ade80"
+    },
+    {
+      "name": "bebidavegetal_yosoy_avena_1l",
+      "color": "#22d3ee"
+    },
+    {
+      "name": "begudavegetal_ametller_civada_cerosucre_1l",
+      "color": "#a78bfa"
+    }
+  ],
+  "boxes": [
+    {
+      "class": 12,
+      "x": 1896.1967213114754,
+      "y": 1504.9180327868853,
+      "w": 581.9016393442625,
+      "h": 1451.409836065574
+    },
+    {
+      "class": 12,
+      "x": 2531.6065573770493,
+      "y": 1511.6065573770493,
+      "w": 501.63934426229525,
+      "h": 1444.72131147541
+    },
+    {
+      "class": 13,
+      "x": 3200.4590163934427,
+      "y": 1511.6065573770493,
+      "w": 468.19672131147536,
+      "h": 1545.0491803278687
+    },
+    {
+      "class": 13,
+      "x": 3735.5409836065573,
+      "y": 1591.8688524590164,
+      "w": 515.0163934426228,
+      "h": 1431.3442622950822
+    },
+    {
+      "class": 15,
+      "x": 1374.4918032786886,
+      "y": 4039.8688524590166,
+      "w": 648.7868852459017,
+      "h": 1591.8688524590166
+    },
+    {
+      "class": 15,
+      "x": 2050.032786885246,
+      "y": 4080,
+      "w": 608.655737704918,
+      "h": 1611.934426229508
+    },
+    {
+      "class": 15,
+      "x": 2752.3278688524592,
+      "y": 4086.688524590164,
+      "w": 555.1475409836066,
+      "h": 1591.8688524590161
+    },
+    {
+      "class": 19,
+      "x": 30.098360655737707,
+      "y": 4026.4918032786886,
+      "w": 675.5409836065575,
+      "h": 1565.1147540983607
+    },
+    {
+      "class": 19,
+      "x": 705.6393442622951,
+      "y": 4013.1147540983607,
+      "w": 642.0983606557378,
+      "h": 1618.6229508196725
+    },
+    {
+      "class": 5,
+      "x": 3441.2459016393445,
+      "y": 4059.9344262295085,
+      "w": 628.7213114754095,
+      "h": 1645.3770491803275
+    }
+  ]
+}

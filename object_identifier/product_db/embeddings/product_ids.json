@@ -1,32 +1,32 @@
 [
   {
-    "image_id": "almendrola_sin_azucar_1l_001",
-    "sku_id": "almendrola_sin_azucar_1l",
-    "image_path": "product_db/images/almendrola_sin_azucar_1l_001.jpg",
+    "image_id": "bebidavegetal_almendrola_almendra_1l_001",
+    "sku_id": "bebidavegetal_almendrola_almendra_1l",
+    "image_path": "product_db/images/bebidavegetal_almendrola_almendra_1l_001.jpg",
     "embedding_index": 0
   },
   {
-    "image_id": "leche_coco_elements_1l_001",
-    "sku_id": "leche_coco_elements_1l",
-    "image_path": "product_db/images/leche_coco_elements_1l_001.jpg",
+    "image_id": "bebidavegetal_ametller_orxata_1l_001",
+    "sku_id": "bebidavegetal_ametller_orxata_1l",
+    "image_path": "product_db/images/bebidavegetal_ametller_orxata_1l_001.jpg",
     "embedding_index": 1
   },
   {
-    "image_id": "orxata_xufa_ametller_1l_001",
-    "sku_id": "orxata_xufa_ametller_1l",
-    "image_path": "product_db/images/orxata_xufa_ametller_1l_001.jpg",
+    "image_id": "bebidavegetal_elements_coco_1l_001",
+    "sku_id": "bebidavegetal_elements_coco_1l",
+    "image_path": "product_db/images/bebidavegetal_elements_coco_1l_001.jpg",
     "embedding_index": 2
   },
   {
-    "image_id": "yosoy_arroz_avellanas_1l_001",
-    "sku_id": "yosoy_arroz_avellanas_1l",
-    "image_path": "product_db/images/yosoy_arroz_avellanas_1l_001.jpg",
+    "image_id": "bebidavegetal_yosoy_arroz_avellanas_1l_001",
+    "sku_id": "bebidavegetal_yosoy_arroz_avellanas_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_arroz_avellanas_1l_001.jpg",
     "embedding_index": 3
   },
   {
-    "image_id": "yosoy_arroz_coco_1l_001",
-    "sku_id": "yosoy_arroz_coco_1l",
-    "image_path": "product_db/images/yosoy_arroz_coco_1l_001.jpg",
+    "image_id": "bebidavegetal_yosoy_arroz_coco_1l_001",
+    "sku_id": "bebidavegetal_yosoy_arroz_coco_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_arroz_coco_1l_001.jpg",
     "embedding_index": 4
   },
   {

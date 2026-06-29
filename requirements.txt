@@ -8,6 +8,7 @@ mediapipe
 matplotlib
 ollama
 pyttsx3
+piper-tts
 faster-whisper
 open_clip_torch
 pandas

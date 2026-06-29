@@ -56,6 +56,12 @@ class TrackedObject:
     price_eur: object
     state: str
 
+@dataclass
+class HandDetection:
+    found: bool
+    touched_point: tuple | None
+    hand_landmarks: object = None
+
 
 # ── Inject patched modules before importing tracked_scene_memory ──────────────
 
@@ -84,11 +90,18 @@ _fake_sm_init.TrackedObject = TrackedObject
 
 _fake_sm_core = types.ModuleType("scene_memory.scene_memory")
 _fake_sm_core.annotate_box = lambda frame, box, label, color: frame  # no-op
+_fake_hand_detector = types.ModuleType("hand_detector")
+_fake_hand_detector.HandDetection = HandDetection
+_fake_hand_detector.draw_hand_landmarks = lambda *a, **k: None
+_fake_object_detector = types.ModuleType("object_detector")
+_fake_object_detector.ProductDetection = ProductDetection
 
 sys.modules.setdefault("cv2", _build_fake_cv2())
 sys.modules["scene_memory"] = _fake_sm_init
 sys.modules["scene_memory.types"] = _fake_types_mod
 sys.modules["scene_memory.scene_memory"] = _fake_sm_core
+sys.modules["hand_detector"] = _fake_hand_detector
+sys.modules["object_detector"] = _fake_object_detector
 
 import importlib.util, pathlib
 
@@ -113,6 +126,12 @@ def make_identification(bbox, sku_id, description, score=0.85, confidence=0.9, a
         description=description, category="dairy-free", accepted=accepted,
     )
 
+def make_hand_detection(finger_tip=None):
+    return HandDetection(found=finger_tip is not None, touched_point=finger_tip)
+
+def update_memory(mem, frame_index, detections, identifications, finger_tip=None):
+    mem.update(frame_index, detections, identifications, make_hand_detection(finger_tip))
+
 def separator(title):
     print(f"\n{'─' * 60}")
     print(f"  {title}")
@@ -123,6 +142,11 @@ def assert_eq(label, got, expected):
     print(f"  {status} {label}: got={got!r}, expected={expected!r}")
     assert got == expected, f"FAILED: {label}"
 
+def assert_bbox_close(label, got, expected, precision=6):
+    rounded_got = tuple(round(value, precision) for value in got)
+    rounded_expected = tuple(round(value, precision) for value in expected)
+    assert_eq(label, rounded_got, rounded_expected)
+
 
 # ── Test 1: Products persist across frames ────────────────────────────────────
 separator("Test 1 — Products persist across frames (same track ID)")
@@ -131,7 +155,7 @@ mem = TrackedShelfSceneMemory()
 bbox_a = (100, 100, 200, 200)
 bbox_b = (300, 100, 400, 200)
 
-mem.update(1, [make_detection(bbox_a), make_detection(bbox_b)], [
+update_memory(mem, 1, [make_detection(bbox_a), make_detection(bbox_b)], [
     make_identification(bbox_a, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_b, "alpro_soy", "Alpro Soy Milk"),
 ])
@@ -141,7 +165,7 @@ print(f"  Frame 1 track IDs: {ids_frame1}")
 bbox_a2 = (102, 101, 202, 201)  # slightly shifted — still overlaps well
 bbox_b2 = (301, 100, 401, 200)
 
-mem.update(2, [make_detection(bbox_a2), make_detection(bbox_b2)], [
+update_memory(mem, 2, [make_detection(bbox_a2), make_detection(bbox_b2)], [
     make_identification(bbox_a2, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_b2, "alpro_soy", "Alpro Soy Milk"),
 ])
@@ -154,7 +178,7 @@ assert_eq("Track IDs stable across frames", ids_frame1, ids_frame2)
 separator("Test 2 — New product gets a new ID")
 
 bbox_c = (500, 100, 600, 200)
-mem.update(3, [make_detection(bbox_a2), make_detection(bbox_b2), make_detection(bbox_c)], [
+update_memory(mem, 3, [make_detection(bbox_a2), make_detection(bbox_b2), make_detection(bbox_c)], [
     make_identification(bbox_a2, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_b2, "alpro_soy", "Alpro Soy Milk"),
     make_identification(bbox_c, "yosoy_oat", "Yosoy Oat Milk"),
@@ -169,7 +193,7 @@ assert_eq("One new track created", len(new_ids), 1)
 separator("Test 3 — Disappeared product removed after max_missed_frames")
 
 for i in range(4, 4 + mem.max_missed_frames + 5):
-    mem.update(i, [make_detection(bbox_a2), make_detection(bbox_b2)], [
+    update_memory(mem, i, [make_detection(bbox_a2), make_detection(bbox_b2)], [
         make_identification(bbox_a2, "oatly_1l", "Oatly Oat Milk 1L"),
         make_identification(bbox_b2, "alpro_soy", "Alpro Soy Milk"),
     ])
@@ -185,7 +209,7 @@ mem2 = TrackedShelfSceneMemory()
 bbox_x = (50, 50, 150, 150)
 bbox_y = (200, 50, 300, 150)
 
-mem2.update(1, [make_detection(bbox_x), make_detection(bbox_y)], [
+update_memory(mem2, 1, [make_detection(bbox_x), make_detection(bbox_y)], [
     make_identification(bbox_x, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_y, "alpro_soy", "Alpro Soy Milk"),
 ], finger_tip=(100, 100))  # inside bbox_x
@@ -197,7 +221,7 @@ assert_eq("Touched object is Oatly", touched.description if touched else None, "
 # ── Test 5: Finger tip near but outside → closest box ────────────────────────
 separator("Test 5 — Finger tip near a box (within tolerance)")
 
-mem2.update(2, [make_detection(bbox_x), make_detection(bbox_y)], [
+update_memory(mem2, 2, [make_detection(bbox_x), make_detection(bbox_y)], [
     make_identification(bbox_x, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_y, "alpro_soy", "Alpro Soy Milk"),
 ], finger_tip=(160, 100))  # 10px outside bbox_x (x2=150)
@@ -209,7 +233,7 @@ assert_eq("Nearest box (Oatly) returned", touched.description if touched else No
 # ── Test 6: Finger tip far away → None ───────────────────────────────────────
 separator("Test 6 — Finger tip far away → no object touched")
 
-mem2.update(3, [make_detection(bbox_x), make_detection(bbox_y)], [
+update_memory(mem2, 3, [make_detection(bbox_x), make_detection(bbox_y)], [
     make_identification(bbox_x, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_y, "alpro_soy", "Alpro Soy Milk"),
 ], finger_tip=(800, 800))
@@ -223,7 +247,7 @@ separator("Test 7 — find_by_description()")
 
 # Use a fresh memory so both products are freshly visible (missed_frames=0)
 mem_fd = TrackedShelfSceneMemory()
-mem_fd.update(1, [make_detection(bbox_x), make_detection(bbox_y)], [
+update_memory(mem_fd, 1, [make_detection(bbox_x), make_detection(bbox_y)], [
     make_identification(bbox_x, "oatly_1l", "Oatly Oat Milk 1L"),
     make_identification(bbox_y, "alpro_soy", "Alpro Soy Milk"),
 ])
@@ -241,11 +265,44 @@ separator("Test 8 — Track promotes tentative → confirmed after 3 frames")
 mem3 = TrackedShelfSceneMemory()
 bbox_z = (10, 10, 80, 80)
 for i in range(1, 5):
-    mem3.update(i, [make_detection(bbox_z)],
-                [make_identification(bbox_z, "oatly_1l", "Oatly Oat Milk 1L")])
+    update_memory(mem3, i, [make_detection(bbox_z)],
+                  [make_identification(bbox_z, "oatly_1l", "Oatly Oat Milk 1L")])
 
 track = list(mem3.tracks.values())[0]
 assert_eq("Track state is confirmed after 4 frames", track.state, "confirmed")
+
+
+# ── Test 9: accepted identification confirms an existing unknown track ─────────
+separator("Test 9 — Accepted match confirms existing unknown track")
+
+mem4 = TrackedShelfSceneMemory()
+bbox_unknown = (100.2, 100.3, 200.4, 200.5)
+update_memory(mem4, 1, [make_detection(bbox_unknown)], [
+    make_identification((100, 100, 200, 200), None, "Unknown product", accepted=False)
+])
+
+track = list(mem4.tracks.values())[0]
+assert_eq("Track starts tentative", track.state, "tentative")
+assert_eq("Track starts without best SKU", track.best_sku_id, None)
+
+bbox_matched = (101.2, 100.8, 201.4, 200.9)
+update_memory(mem4, 2, [make_detection(bbox_matched)], [
+    make_identification((101, 101, 201, 201), "accepted_sku", "Accepted Product", accepted=True)
+])
+
+track = list(mem4.tracks.values())[0]
+assert_eq("Accepted existing match is confirmed", track.state, "confirmed")
+assert_eq("Accepted existing match sets best SKU", track.best_sku_id, "accepted_sku")
+assert_bbox_close(
+    "Matched bbox is smoothed 70/30",
+    track.bbox,
+    (
+        0.7 * bbox_unknown[0] + 0.3 * bbox_matched[0],
+        0.7 * bbox_unknown[1] + 0.3 * bbox_matched[1],
+        0.7 * bbox_unknown[2] + 0.3 * bbox_matched[2],
+        0.7 * bbox_unknown[3] + 0.3 * bbox_matched[3],
+    ),
+)
 
 
 # ── Done ──────────────────────────────────────────────────────────────────────

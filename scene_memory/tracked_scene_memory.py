@@ -64,6 +64,39 @@ def _distance_point_to_box(point: tuple[int, int], bbox: tuple) -> float:
     return float(np.sqrt(dx * dx + dy * dy))
 
 
+def _smooth_bbox(previous_bbox: tuple, new_bbox: tuple, previous_weight: float) -> tuple:
+    """Blend a matched bbox with its previous value to reduce annotation jitter."""
+    new_weight = 1.0 - previous_weight
+    return tuple(
+        previous_weight * previous + new_weight * new
+        for previous, new in zip(previous_bbox, new_bbox)
+    )
+
+
+def _find_identification_for_bbox(
+    bbox: tuple,
+    id_by_bbox: dict[tuple, ProductIdentification],
+    identifications: list[ProductIdentification],
+    iou_threshold: float,
+) -> ProductIdentification | None:
+    """Find the identification belonging to a detection bbox."""
+    ident = id_by_bbox.get(bbox)
+    if ident is not None:
+        return ident
+
+    best_ident = None
+    best_iou = 0.0
+    for candidate in identifications:
+        iou = _iou(bbox, candidate.bbox)
+        if iou > best_iou:
+            best_iou = iou
+            best_ident = candidate
+
+    if best_iou >= iou_threshold:
+        return best_ident
+    return None
+
+
 # ── Main class ────────────────────────────────────────────────────────────────
 
 class TrackedShelfSceneMemory:
@@ -83,6 +116,7 @@ class TrackedShelfSceneMemory:
 
     # How many consecutive frames a track must be seen before it's confirmed
     CONFIRM_FRAMES = 3
+    BBOX_PREVIOUS_WEIGHT = 0.7
 
     def __init__(
         self,
@@ -115,10 +149,21 @@ class TrackedShelfSceneMemory:
         detections: list[ProductDetection],
         identifications: list[ProductIdentification],
         hand_detection: HandDetection,
+        verbose: bool = True,
     ) -> None:
         
         self.touch_point = None if not hand_detection.found else hand_detection.touched_point
         self.last_hand_detection = hand_detection
+
+        if verbose:
+            if self.touch_point is not None:
+                print(f"[SceneMemory.update] Frame {frame_index}: Finger tip at {self.touch_point}")
+            # print identifications for debugging
+            print(f"[SceneMemory.update] Frame {frame_index}: {len(identifications)} identifications")
+            for idx, ident in enumerate(identifications):
+                print(
+                    f"[{idx}]  bbox={ident.bbox} sku_id={ident.sku_id} score={ident.score:.3f} accepted={ident.accepted}"
+                )
 
         # Build a lookup from bbox → identification for this frame
         id_by_bbox: dict[tuple, ProductIdentification] = {
@@ -149,9 +194,18 @@ class TrackedShelfSceneMemory:
                 matched_detection_indices.add(best_det_idx)
 
                 new_bbox = incoming_bboxes[best_det_idx]
-                ident = id_by_bbox.get(new_bbox)
+                ident = _find_identification_for_bbox(
+                    new_bbox,
+                    id_by_bbox,
+                    identifications,
+                    self.iou_threshold,
+                )
 
-                track.bbox = new_bbox
+                track.bbox = _smooth_bbox(
+                    track.bbox,
+                    new_bbox,
+                    self.BBOX_PREVIOUS_WEIGHT,
+                )
                 track.last_seen_frame = frame_index
                 track.missed_frames = 0
 
@@ -170,13 +224,14 @@ class TrackedShelfSceneMemory:
                     track.sku_votes[ident.sku_id] = (
                         track.sku_votes.get(ident.sku_id, 0.0) + ident.score
                     )
-                    # Pick the SKU with the highest cumulative vote
-                    best_sku = max(track.sku_votes, key=track.sku_votes.get)
-                    track.best_sku_id = best_sku
+                    if verbose:
+                        print("Assigning best SKU:", ident.sku_id, "with score:", track.sku_votes[ident.sku_id])
+                    track.best_sku_id = ident.sku_id
                     track.best_sku_score = ident.score
                     track.identity_confidence = ident.confidence
                     track.description = ident.description
                     track.category = ident.category
+                    track.state = "confirmed"
 
                 # Promote to confirmed if seen enough times
                 frames_alive = frame_index - track.first_seen_frame
@@ -189,7 +244,12 @@ class TrackedShelfSceneMemory:
             if det_idx in matched_detection_indices:
                 continue
 
-            ident = id_by_bbox.get(detection.bbox)
+            ident = _find_identification_for_bbox(
+                detection.bbox,
+                id_by_bbox,
+                identifications,
+                self.iou_threshold,
+            )
             accepted = ident is not None and ident.accepted and ident.sku_id is not None
 
             new_track = TrackedObject(
@@ -236,12 +296,13 @@ class TrackedShelfSceneMemory:
         if self.touch_point is not None:
             self._resolve_touched_track(self.touch_point)
 
-        print(
-            f"[SceneMemory] frame={frame_index} | "
-            f"tracks={len(self.tracks)} | "
-            f"touched={self.touched_track_id} | "
-            f"finger={self.touch_point}"
-        )
+        if verbose:
+            print(
+                f"[SceneMemory] frame={frame_index} | "
+                f"tracks={len(self.tracks)} | "
+                f"touched={self.touched_track_id} | "
+                f"finger={self.touch_point}"
+            )
 
     # ── Pointing resolution ───────────────────────────────────────────────────
 
@@ -347,7 +408,8 @@ class TrackedShelfSceneMemory:
 
     def annotate_image(self, frame, verbose: bool = True) -> cv2.Mat:
         annotated = frame.copy()
-        print(f"[SceneMemory] Annotating frame with {len(self.tracks)} tracked objects.")
+        if verbose:
+            print(f"[SceneMemory] Annotating frame with {len(self.tracks)} tracked objects.")
 
         # Colors are BGR (OpenCV convention)
         for track in self.tracks.values():
@@ -362,7 +424,7 @@ class TrackedShelfSceneMemory:
                     print(f"[{track.track_id}] Unknown — state={track.state}")
 
             if track.track_id == self.touched_track_id:
-                color = (0, 165, 255)   # orange — being pointed at
+                color = (255, 0, 0)   # blue — being pointed at
             elif track.state == "lost":
                 color = (128, 128, 128)  # gray — remembered but currently occluded
             elif track.best_sku_id:
@@ -374,7 +436,7 @@ class TrackedShelfSceneMemory:
 
         if self.touch_point is not None and self.last_hand_detection is not None:
             draw_hand_landmarks(annotated, self.last_hand_detection.hand_landmarks)
-            cv2.circle(annotated, self.touch_point, radius=10, color=(0, 165, 255), thickness=-1)
+            cv2.circle(annotated, self.touch_point, radius=10, color=(255, 0, 0), thickness=-1)
 
         return annotated
 

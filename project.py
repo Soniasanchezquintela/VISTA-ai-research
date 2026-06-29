@@ -486,9 +486,10 @@ def process_webcam(
         # Measure elapsed time for inference
         start_time = time.time()
 
-        verbose = frame_count % 30 == 0
+        verbose = frame_count % 15 == 0
 
-        print("=" * 80)
+        if verbose:
+            print("=" * 80)
 
         detections, hand_detection, identifications = execute_pipeline(
             frame,
@@ -500,15 +501,16 @@ def process_webcam(
         )
         end_time = time.time()
         inference_time = end_time - start_time
-        # Print inference time every 30 frames
-        if frame_count % 30 == 0:
+
+        if verbose:
             print(f"Inference speed: {1.0/inference_time:.3f} frames/s")
 
         scene_memory.update(
             frame_count, 
             detections, 
             identifications,
-            hand_detection)
+            hand_detection,
+            verbose=verbose)
 
 
         # Display annotated frame
@@ -516,7 +518,7 @@ def process_webcam(
         #     preview_image = hand_detection.annotated_image.copy()
         # else:
         #     preview_image = frame.copy()
-        annotated_frame = scene_memory.annotate_image(frame)
+        annotated_frame = scene_memory.annotate_image(frame, verbose)
         cv2.imshow(window_name, annotated_frame)
         
         # Process GUI events so the window updates and can receive key presses

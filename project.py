@@ -801,6 +801,10 @@ class CommandInterpreter(cmd.Cmd):
         description = scene_memory.describe_pointed_product()
         self.speak(description)
 
+    def do_reset_scene_memory(self, arg: str) -> None:
+        """Reset the scene memory."""
+        scene_memory.reset()
+
 def main():
 
     args = parse_args()

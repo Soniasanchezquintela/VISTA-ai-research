@@ -133,6 +133,7 @@ class TrackedShelfSceneMemory:
         self.touched_track_id: int | None = None
         self.touch_point: tuple[int, int] | None = None
         self.last_hand_detection: HandDetection | None = None
+        self._scene_describer = None
 
     def reset(self) -> None:
         self.tracks.clear()
@@ -362,47 +363,37 @@ class TrackedShelfSceneMemory:
         return track.best_sku_id is None or track.best_sku_id == "unknown"
 
     def describe_scene(self) -> str:
-        """
-        Generate a structured Spanish scene description.
+        """Describe visible products by shelf, using the LLM when available."""
+        if self._scene_describer is None:
+            # Keep this import lazy: scene tracking does not require Ollama
+            # until the user explicitly asks for a scene description.
+            from .llm_describer import LLMSceneDescriber
 
-        Rules (matching the project's describe_scene contract):
-        - Unknown products are not named; we count them and mention the total.
-        - Identical known products are grouped and mentioned only once.
-        """
-        visible_objects = self.get_visible_objects()
-        if len(visible_objects) == 0:
-            return "Nada a la vista. ¿Está activada la cámara?"
+            self._scene_describer = LLMSceneDescriber()
 
-        description = "La escena contiene "
-        described_sku_ids: set = set()
-        i = 0
-        unknown_count = 0
-        for track in visible_objects:
-            if self._is_unknown(track):
-                unknown_count += 1
-                continue
-            if track.best_sku_id in described_sku_ids:
-                continue
-
-            described_sku_ids.add(track.best_sku_id)
-            if i > 0:
-                description += ", "
-            description += f"{track.description}"
-            i += 1
-        description += "."
-        if unknown_count > 0:
-            description += f" Además, hay {unknown_count} productos que no reconozco."
-        return description
+        return self._scene_describer.describe(
+            self.get_visible_objects(),
+            language="es",
+        )
 
     def describe_pointed_product(self) -> str:
-        """Generate a Spanish description of the product the user is pointing at."""
+        """Describe the product currently selected by the pointing detector."""
         touched_object = self.get_touched_object()
         if touched_object is None or self._is_unknown(touched_object):
             return (
                 "Mano no detectada o el producto no está claro. "
                 "Intenta apartar la mano brevemente y vuelve a intentarlo."
             )
-        return f"El producto que está señalando es {touched_object.description}."
+
+        if self._scene_describer is None:
+            from .llm_describer import LLMSceneDescriber
+
+            self._scene_describer = LLMSceneDescriber()
+
+        return self._scene_describer.describe_pointed_product(
+            touched_object,
+            language="es",
+        )
 
     # ── Annotation ────────────────────────────────────────────────────────────
 

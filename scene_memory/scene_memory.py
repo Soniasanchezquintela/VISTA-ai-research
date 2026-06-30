@@ -57,6 +57,7 @@ class ShelfSceneMemory:
         self.next_track_id = 1
         self.touched_track_id: int | None = None
         self.touch_point: tuple[int, int] | None = None
+        self._scene_describer = None
 
     def reset(self) -> None:
         self.tracks.clear()
@@ -130,9 +131,32 @@ class ShelfSceneMemory:
         return annotated_frame
 
     def get_touched_object(self) -> TrackedObject | None:
-        """
-        Return the object the user is probably touching.
-        """
+        """Return the visible object containing or nearest to the touch point."""
+        if self.touch_point is None:
+            return None
+
+        px, py = self.touch_point
+        nearest_track = None
+        nearest_distance = float("inf")
+
+        for track in self.get_visible_objects():
+            x1, y1, x2, y2 = track.bbox
+            if x1 <= px <= x2 and y1 <= py <= y2:
+                self.touched_track_id = track.track_id
+                return track
+
+            dx = max(x1 - px, 0, px - x2)
+            dy = max(y1 - py, 0, py - y2)
+            distance = (dx * dx + dy * dy) ** 0.5
+            if distance < nearest_distance:
+                nearest_track = track
+                nearest_distance = distance
+
+        if nearest_track is not None and nearest_distance <= 80:
+            self.touched_track_id = nearest_track.track_id
+            return nearest_track
+
+        self.touched_track_id = None
         return None
 
     def get_visible_objects(self) -> list[TrackedObject]:
@@ -144,50 +168,39 @@ class ShelfSceneMemory:
         return list(self.tracks.values())
 
     def describe_scene(self) -> str:
-        """
-        Generate a structured scene description.
-        """
-        visible_objects = self.get_visible_objects()
-        if len(visible_objects) == 0:
-            return "Nada a la vista. Está activada la cámara?"
+        """Describe visible products by shelf, using the LLM when available."""
+        if self._scene_describer is None:
+            from .llm_describer import LLMSceneDescriber
 
-        # NURIA: put here your describing scene code based on your LLM.
-        # This is just a simple example that enumerates the detected products
-        # with the following rules:
-        # - if the product is unknown, we don't describe it, we count how many are there and say it.
-        # - if we have several known products that are identical, we group them and only say it once.
-        description = "La escena contiene "
-        described_sku_ids: set[str] = set()
-        i = 0
-        unknown_count = 0
-        for track in visible_objects:
-            if track.best_sku_id == "unknown":
-                unknown_count += 1
-                continue
-            if track.best_sku_id in described_sku_ids:
-                continue
+            self._scene_describer = LLMSceneDescriber()
 
-            described_sku_ids.add(track.best_sku_id)
-            if i > 0:
-                description += ", "
-            description += f"{track.description}"
-            i += 1
-        description += "."
-        if unknown_count > 0:
-            description += " Además, hay " + f"{unknown_count} productos que no reconozco."
-        return description
+        return self._scene_describer.describe(
+            self.get_visible_objects(),
+            language="es",
+        )
 
     def describe_pointed_product(self) -> str:
-        """
-        Generate a description of the product the user is pointing at.
-        """
+        """Describe the product currently selected by the pointing detector."""
         touched_object = self.get_touched_object()
-        if touched_object is None:
-            return "Mano no detectada o el producto no está claro. Intenta apartar la mano brevemente y vuelve a intentarlo."
+        if (
+            touched_object is None
+            or touched_object.best_sku_id is None
+            or touched_object.best_sku_id == "unknown"
+        ):
+            return (
+                "Mano no detectada o el producto no está claro. "
+                "Intenta apartar la mano brevemente y vuelve a intentarlo."
+            )
 
-        # NURIA: put here your describing pointed product code based on your LLM.
-        # This is just a simple example that describes the detected product.
-        return f"El producto que está señalando es {touched_object.description}."
+        if self._scene_describer is None:
+            from .llm_describer import LLMSceneDescriber
+
+            self._scene_describer = LLMSceneDescriber()
+
+        return self._scene_describer.describe_pointed_product(
+            touched_object,
+            language="es",
+        )
 
     def forget_old_tracks(self) -> None:
         """

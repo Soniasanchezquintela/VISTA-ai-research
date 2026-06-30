@@ -17,6 +17,7 @@ Run:
 
 from __future__ import annotations
 
+import pathlib
 import sys
 import types
 from dataclasses import dataclass, field
@@ -84,6 +85,9 @@ _fake_types_mod.ProductIdentification = ProductIdentification
 _fake_types_mod.TrackedObject = TrackedObject
 
 _fake_sm_init = types.ModuleType("scene_memory")
+_fake_sm_init.__path__ = [
+    str(pathlib.Path(__file__).parent / "scene_memory")
+]
 _fake_sm_init.ProductDetection = ProductDetection
 _fake_sm_init.ProductIdentification = ProductIdentification
 _fake_sm_init.TrackedObject = TrackedObject
@@ -103,7 +107,7 @@ sys.modules["scene_memory.scene_memory"] = _fake_sm_core
 sys.modules["hand_detector"] = _fake_hand_detector
 sys.modules["object_detector"] = _fake_object_detector
 
-import importlib.util, pathlib
+import importlib.util
 
 spec = importlib.util.spec_from_file_location(
     "scene_memory.tracked_scene_memory",
@@ -301,6 +305,73 @@ assert_bbox_close(
         0.7 * bbox_unknown[1] + 0.3 * bbox_matched[1],
         0.7 * bbox_unknown[2] + 0.3 * bbox_matched[2],
         0.7 * bbox_unknown[3] + 0.3 * bbox_matched[3],
+    ),
+)
+
+# ── Test 10: describe_scene delegates to the integrated describer ─────────────
+separator("Test 10 — describe_scene uses the integrated scene describer")
+
+empty_description = TrackedShelfSceneMemory().describe_scene()
+assert_eq(
+    "Empty scene description",
+    empty_description,
+    "Nada a la vista. ¿Está activada la cámara?",
+)
+
+
+class StubSceneDescriber:
+    def __init__(self):
+        self.tracks = None
+        self.language = None
+        self.pointed_track = None
+
+    def describe(self, tracks, language="es"):
+        self.tracks = list(tracks)
+        self.language = language
+        return "Descripción generada"
+
+    def describe_pointed_product(self, track, language="es"):
+        self.pointed_track = track
+        self.language = language
+        return "Producto señalado generado"
+
+
+stub_describer = StubSceneDescriber()
+mem2._scene_describer = stub_describer
+assert_eq(
+    "describe_scene delegates its return value",
+    mem2.describe_scene(),
+    "Descripción generada",
+)
+assert_eq(
+    "describe_scene passes visible tracks",
+    len(stub_describer.tracks),
+    len(mem2.get_visible_objects()),
+)
+assert_eq("describe_scene requests Spanish", stub_describer.language, "es")
+
+mem2.touched_track_id = 1
+assert_eq(
+    "describe_pointed_product delegates its return value",
+    mem2.describe_pointed_product(),
+    "Producto señalado generado",
+)
+assert_eq(
+    "describe_pointed_product passes only the touched track",
+    stub_describer.pointed_track.track_id,
+    1,
+)
+assert_eq(
+    "describe_pointed_product requests Spanish",
+    stub_describer.language,
+    "es",
+)
+assert_eq(
+    "No pointed product uses the guidance fallback",
+    TrackedShelfSceneMemory().describe_pointed_product(),
+    (
+        "Mano no detectada o el producto no está claro. "
+        "Intenta apartar la mano brevemente y vuelve a intentarlo."
     ),
 )
 

@@ -207,35 +207,73 @@ interaction with scene memory. New hypotheses.]
 A per-frame pipeline that re-detects and re-identifies from scratch each frame
 will produce unstable output (flickering boxes, changing IDs) and cannot support
 pointing, because nothing persists between frames. We expect that adding a
-tracking layer — matching boxes across frames and remembering them briefly when
-occluded — will give stable identities, survive a hand passing over a product,
-and make pointing usable.
+tracking layer — matching boxes across frames, remembering them briefly when
+occluded, and voting on their identity over time — will give stable identities,
+survive a hand passing over a product, stay stable when the camera pans, and make
+pointing usable.
 
 **Experiment setup**
 - **Baseline:** original `ShelfSceneMemory` — resets every frame;
   `get_touched_object()` returns `None` (pointing impossible).
-- **Ours:** `TrackedShelfSceneMemory` — IoU matching (threshold **0.30**),
-  lost-track persistence (~**30 frames**), per-SKU identity voting (accumulated
-  CLIP scores so one bad frame can't flip a confident label), and a working
-  `get_touched_object()` (finger inside box, else nearest within tolerance).
-- **Evaluation:** unit tests (`test_scene_memory.py`, 8 cases: ID stability,
+- **Ours:** `TrackedShelfSceneMemory`. The public interface is unchanged, so it
+  is a drop-in replacement. It combines three mechanisms (detailed below):
+  IoU matching, product voting, and global-motion compensation.
+- **Evaluation:** unit tests (`test_scene_memory.py`: ID stability,
   new-vs-existing, occlusion survival/removal, pointing hit/miss, voting,
-  promotion) + qualitative webcam runs comparing baseline vs ours.
+  promotion, bbox smoothing) + qualitative webcam runs comparing baseline vs ours.
+
+**Core components**
+
+*(1) IoU (Intersection over Union) — the matching mechanism.*
+IoU measures how much two boxes overlap, relative to their combined area
+(0 = disjoint, 1 = identical). Each frame, every remembered product is matched to
+the new detection it overlaps most; overlap **≥ 30%** counts as "the same product"
+(keep its ID and history), below 30% does not. The 30% threshold balances two
+failure modes: too high loses identity on small movements, too low merges
+neighbouring products.
+
+*(2) Product voting — the identification mechanism.*
+A single CLIP reading can be wrong (blur, glare, angle). Instead of trusting one
+frame, each track keeps a per-identity **vote tally**: every confident frame adds
+its score, and the displayed label is whichever identity leads. A single bad frame
+therefore cannot override a repeated, confident answer. Low-confidence frames cast
+no vote (the system stays silent rather than guess); votes reset if a track loses
+its identity. This is what makes the green "recognized" label trustworthy.
+
+*(3) Motion compensation — robustness to camera movement.*
+Because matching relies on IoU, a camera pan (the user turning their head) moves
+every box at once and would break every match — leaving greyed "ghost" boxes and
+renumbering everything. Insight: a pan shifts every product by the *same* vector.
+We recover that vector by **displacement voting** — measuring how far each old box
+would move to reach each new box, and taking the shift the most products agree on
+(robust to large shifts, occluded products, and one product moving on its own). We
+then shift old boxes to their predicted positions before matching, so identities
+survive the pan. Limitation: this models translation only, not large rotation/zoom.
+
+*Occlusion persistence.* A product that disappears (e.g. a hand covering it) is
+kept as a greyed "lost" track for up to **90 frames (~3 s)** before removal, then
+revived with its original ID if it reappears — enough time for a slow, deliberate
+hand placement.
 
 **Results**
-- Unit tests: [PLACEHOLDER — "8/8 passing"] covering ID stability, occlusion
-  survival, and pointing resolution.
-- [PLACEHOLDER — before/after webcam: box-flicker count or ID-switch count over a
-  fixed clip; box survival time under hand occlusion.]
+- Unit tests: [PLACEHOLDER — "N/N passing"] covering ID stability, occlusion
+  survival, pointing resolution, voting, and bbox smoothing.
+- [PLACEHOLDER — before/after webcam: box-flicker / ID-switch count over a fixed
+  clip; box survival time under hand occlusion.]
+- [PLACEHOLDER — head-turn comparison: ghost-box count with vs without motion
+  compensation.]
 - [PLACEHOLDER — screenshot of a product keeping its ID while briefly covered
-  (gray "lost" box → revived).]
+  (grey "lost" box → revived), and green boxes when CLIP recognizes a product.]
 
 **Conclusions**
-Tracking is what makes pointing function at all (baseline always returns `None`).
-The 30% IoU threshold and ~30-frame window hold for slow, deliberate movement but
-fail under fast motion (an *ID switch*: the same product is treated as old-gone +
-new-arrived, losing its voting history). Future work: motion prediction
-(Kalman/SORT-style) or appearance matching to survive fast motion.
+Tracking is what makes pointing function at all (the baseline always returns
+`None`). IoU matching + 90-frame persistence give stable IDs and survive brief
+occlusion; voting stabilises the identity label; motion compensation removes the
+ghost-box artefact on head turns. Remaining failure modes: very fast *independent*
+motion of a single product (an *ID switch* — the box is treated as old-gone +
+new-arrived, losing its vote history), and large rotation/zoom (not captured by
+translation-only compensation). Future work: motion prediction (Kalman/SORT-style)
+or appearance-based re-linking to survive these cases.
 
 ---
 

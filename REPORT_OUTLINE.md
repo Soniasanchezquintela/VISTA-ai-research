@@ -338,17 +338,28 @@ them.
 - [PLACEHOLDER — sample scene description outputs.]
 - [PLACEHOLDER — sample pointed-product outputs (known vs unknown product).]
 
-**Conclusions**
 [Template vs LLM trade-off (reliability vs richness); hallucination risk; what a
 real user would actually need. New hypotheses.]
 
 ---
 
-## 4. Overall conclusions & future work
+## ❇️ 4. Overall conclusions & future work
 
 [Synthesize across experiments: what works end-to-end today, the weakest link
 (e.g. the 10-SKU catalog limiting identification), most promising next steps,
 tie back to the assistive use case.]
+🚀 Overall, this multi-modal approach to support the visually impaired works and shows
+a lot of potential. 
+💡We have learned that the systems nees from than frame-by-frame AI; it needs memory,
+confidence, tracking, and user-centered interaction. 
+⚒️ What we would do differently: collect realistic video data earlier, design the scene 
+memory layer from teh start, modularize the pipeline more clearly, work in robustness,
+and evaluate sooner. 
+
+What next steps could be: 
+🛍️ Increase the supermarket dataset to have more images and a more diversified set 
+of sub-contexts within the supermarket (e.g., product type, disposition, light, access).
+👩‍✈️Pilot the project with visually impaired persons.
 
 ---
 

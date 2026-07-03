@@ -109,7 +109,7 @@ python test_scene_memory.py
 *Type: neural-network training experiment.*
 
 **Hypothesis**
-A general-purpose YOLO model will not, out of the box, reliably localize the
+A general-purpose - out of the box - YOLO model will not, out of the box, reliably localize the
 small, densely packed, repeated products found on supermarket shelves. We expect
 that fine-tuning YOLO11 on SKU110K (a dataset built specifically for dense retail
 shelves) will substantially improve detection recall on our own shelf photos,
@@ -152,8 +152,8 @@ confidence thresholds can suppress wrong guesses on products not in the catalog.
 
 **Experiment setup**
 - **Model:** `open_clip` ViT-B-32 (laion2b), frozen — no fine-tuning.
-- **Catalog:** [N] reference products (currently **10** SKUs, mostly plant-based
-  milks, scraped from Ametller; embeddings precomputed in
+- **Catalog:** [N] reference products (currently **10** SKUs, mostly milks, mostly
+-  plant-based milks, scraped from Ametller; embeddings precomputed in
   `product_db/embeddings/`). Metadata in `products.sqlite`.
 - **Matching:** cosine similarity of the crop embedding vs catalog embeddings;
   accept if `score ≥ MIN_SCORE (0.70)` and `confidence ≥ MIN_CONFIDENCE (0.80)`;
@@ -176,6 +176,12 @@ needs fine-tuning / more reference images per SKU. New hypotheses.]
 
 ### Experiment 3 — Pointing-based product selection (MediaPipe Hands)
 *Type: integration / evaluation experiment (pretrained model).*
+
+<img width="447" height="252" alt="Screenshot 2026-07-03 at 14 56 52" src="https://github.com/user-attachments/assets/a14f51ee-3195-4d6e-a063-c9f4e40b446e" />
+<img width="446" height="245" alt="Screenshot 2026-07-03 at 14 59 55" src="https://github.com/user-attachments/assets/6f5f82fc-5797-4e28-8d52-ba0f8c2af064" />
+
+
+
 
 **Hypothesis**
 We expect index-finger landmarks from a pretrained hand detector to give a

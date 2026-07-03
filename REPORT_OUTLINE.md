@@ -9,8 +9,8 @@
 # VISTA — [project tagline, e.g. "Assistive shelf navigation for visually impaired shoppers"]
 
 > 🔗 **Repository:** https://github.com/Soniasanchezquintela/VISTA-ai-research
-> (Add this same link to the front slide of the presentation.)
-
+> (Link also available in the PPT presentation).
+> 
 [1–3 sentence elevator pitch: who it's for, what problem it solves, what it does.]
 
 **Team & roles:** [name — component], [name — component], [name — component], [name — component]
@@ -19,9 +19,9 @@
 
 ## 1. Overview
 
-**Motivation.** [Why this matters: navigating a supermarket shelf is hard for a
-visually impaired person — finding a specific product, knowing what is in front
-of them, or what they are holding. State the gap you are addressing.]
+**Social Motivation/Impact.** [For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
+blind or visually impaired person, finding a product on a shelf can require depending on someone else being available
+to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like teh visually impaired]
 
 **Goal.** VISTA is a prototype assistive system that uses a single camera and the
 user's voice to (a) describe the products on a shelf, and (b) tell the user what

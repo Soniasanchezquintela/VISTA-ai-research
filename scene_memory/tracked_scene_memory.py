@@ -73,6 +73,58 @@ def _smooth_bbox(previous_bbox: tuple, new_bbox: tuple, previous_weight: float) 
     )
 
 
+def _shift_bbox(bbox: tuple, dx: float, dy: float) -> tuple:
+    """Translate a bbox by (dx, dy)."""
+    x1, y1, x2, y2 = bbox
+    return (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
+
+
+def _estimate_global_shift(
+    tracks: dict,
+    incoming_bboxes: list,
+    min_pairs: int = 3,
+    bin_size: float = 20.0,
+) -> tuple[float, float]:
+    """
+    Estimate a uniform (dx, dy) shift of the whole scene between frames —
+    e.g. the user turning their head, which moves every box the same way.
+
+    Method: displacement voting. We compute the centre-to-centre displacement
+    for every (track, detection) pair, quantise it into a grid, and pick the
+    grid cell the most pairs agree on. A true camera pan moves every product
+    by the same vector, so that vector wins the vote no matter how large the
+    shift is (unlike nearest-neighbour matching, which mispairs boxes once the
+    shift exceeds half the spacing between products). Products that vanished
+    (hand occlusion) or moved on their own contribute scattered votes that
+    lose to the dominant cell.
+
+    Returns (0.0, 0.0) when there isn't enough agreement, so the caller falls
+    back to plain (unshifted) matching.
+    """
+    if len(tracks) < min_pairs or not incoming_bboxes:
+        return 0.0, 0.0
+
+    track_centers = [_box_center(t.bbox) for t in tracks.values()]
+    det_centers = [_box_center(b) for b in incoming_bboxes]
+
+    votes: dict[tuple, list] = {}
+    for tx, ty in track_centers:
+        for dcx, dcy in det_centers:
+            dx, dy = dcx - tx, dcy - ty
+            key = (round(dx / bin_size), round(dy / bin_size))
+            votes.setdefault(key, []).append((dx, dy))
+
+    best_key = max(votes, key=lambda k: len(votes[k]))
+    if len(votes[best_key]) < min_pairs:
+        return 0.0, 0.0
+
+    winning = votes[best_key]
+    return (
+        float(np.median([d[0] for d in winning])),
+        float(np.median([d[1] for d in winning])),
+    )
+
+
 def _find_identification_for_bbox(
     bbox: tuple,
     id_by_bbox: dict[tuple, ProductIdentification],
@@ -120,7 +172,7 @@ class TrackedShelfSceneMemory:
 
     def __init__(
         self,
-        max_missed_frames: int = 30,
+        max_missed_frames: int = 90,
         max_locked_missed_frames: int = 300,
         iou_threshold: float = 0.3,
     ) -> None:
@@ -177,14 +229,20 @@ class TrackedShelfSceneMemory:
 
         incoming_bboxes = [d.bbox for d in detections]
 
+        # Compensate for global scene motion (e.g. the user turning their head)
+        # so a uniform shift doesn't break every match at once. Old boxes are
+        # matched at their predicted (shifted) position.
+        shift_dx, shift_dy = _estimate_global_shift(self.tracks, incoming_bboxes)
+
         for track_id, track in self.tracks.items():
+            predicted_bbox = _shift_bbox(track.bbox, shift_dx, shift_dy)
             best_iou = 0.0
             best_det_idx = -1
 
             for det_idx, bbox in enumerate(incoming_bboxes):
                 if det_idx in matched_detection_indices:
                     continue
-                iou = _iou(track.bbox, bbox)
+                iou = _iou(predicted_bbox, bbox)
                 if iou > best_iou:
                     best_iou = iou
                     best_det_idx = det_idx

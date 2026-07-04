@@ -33,7 +33,7 @@ def load_product_index() -> dict[str, int]:
 
     return full_products
 
-def sanity_check(dataset_path: Path) -> bool:
+def sanity_check(dataset_path: Path, check_missing_sku: bool = True) -> bool:
     """
     Check if the dataset path exists and contains at least one image file.
     """
@@ -56,6 +56,9 @@ def sanity_check(dataset_path: Path) -> bool:
         if not json_path.exists():
             print(f"[ERROR] JSON file '{json_path}' does not exist.")
             json_files_ok = False
+
+    if not check_missing_sku:
+        return json_files_ok
 
     sku_ids = load_product_index()
 
@@ -211,7 +214,9 @@ def main():
 
     dataset_path = Path(args.dataset)
 
-    if not sanity_check(dataset_path):
+    check_missing_sku=False
+
+    if not sanity_check(dataset_path, check_missing_sku=check_missing_sku):
         return
 
     print("Loading required modules...", flush=True)
@@ -239,7 +244,10 @@ def main():
 
         print(f"Processing image: {image_path}")
         detections, _ = object_detector.detect_from_frame(frame, verbose=True)
-        identifications = object_identifier.identify_boxes(frame, detections, verbose=True)
+
+        identifications = []
+        if check_missing_sku:
+            identifications = object_identifier.identify_boxes(frame, detections, verbose=True)
 
         print("Number of detections:", len(detections))
         print("Number of identifications:", len(identifications))

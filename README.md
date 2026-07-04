@@ -32,6 +32,15 @@ You only need to this once. Afterwards, you only need to activate it:
 source vista_env/bin/activate
 ```
 
+## AI Models
+
+Some of the models are heavy and because Github is not the proper place to store big binary files, we have uploaded the model files to a shared Google Drive folder. The link of this folder is just above. You need to download the following files from the shared folder and place them in the following subfolders:
+- object_detector/sku110k_768_e20_pat5.pt
+- hand_landmarker.task
+- intentar_classifier/checkpoints/intent_classifier.pt
+- voice/models/
+
+
 ## Text to Speech using piper-tts
 
 File `speak.py`is a test script to easily launch an example of text to voice conversion using the piper-tts package.

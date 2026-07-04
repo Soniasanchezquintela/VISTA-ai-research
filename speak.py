@@ -10,9 +10,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 VOICE_DIRS = [
-    BASE_DIR / "voices",
-    BASE_DIR / "voices" / "piper",
-    BASE_DIR / "models" / "piper",
+    BASE_DIR / "voice" / "models"
 ]
 
 
@@ -88,7 +86,7 @@ def find_piper_model(gender, lang):
 
     raise RuntimeError(
         "No Piper voice model found. Set PIPER_MODEL=/path/to/voice.onnx, "
-        "or place a .onnx voice under voices/, voices/piper/, or models/piper/."
+        "or place a .onnx voice under voice/models/."
     )
 
 
@@ -199,6 +197,5 @@ if __name__ == "__main__":
         print("Optional: PIPER_MODEL=/path/to/voice.onnx python speak.py 'Hello' Male en_US")
         sys.exit(1)
     text = sys.argv[1]
-    gender = sys.argv[2]
-    lang = sys.argv[3] if len(sys.argv) > 3 else "es_ES"
-    text_to_speech(text, gender, lang)
+    lang = sys.argv[2] if len(sys.argv) > 2 else "es_ES"
+    text_to_speech(text=text, gender="Male", lang=lang)

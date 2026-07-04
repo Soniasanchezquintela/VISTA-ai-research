@@ -32,6 +32,23 @@ You only need to this once. Afterwards, you only need to activate it:
 source vista_env/bin/activate
 ```
 
+## Text to Speech using piper-tts
+
+File `speak.py`is a test script to easily launch an example of text to voice conversion using the piper-tts package.
+To test it, you can simply:
+
+```
+python3 speak.py "Text to produce" <language>
+```
+
+For example, to convert a sentence in both Spanish and English:
+
+```
+python3 speak.py "Hay una botella de leche en el estante superior." es
+python3 speak.py "I can see a milk bottle on the top shelf." en
+```
+
+Currently it only supports 2 languages: Spanish (es) and English (en).
 
 ## Completion Time, Object Detection Model, Object Tracking, Physical Demands, Single-board Computer, Temporal Demand, Constant Feedback, Bounding Box, Participants In Experiment, You Only Look Once, Headphones. 
 #https://ieeexplore.ieee.org/abstract/document/10463430 (subscription needed - not accessible via UPF or UPC). Abstract: According to the World Health Organization, hundreds of millions of people worldwide are affected by visual impairments. This has profound personal effects, as our perception, cognition, learning, and daily activities are mediated through vision. In this study, we introduce a wearable visual assistance system designed for visually impaired and blind individuals to help with locating personal items, an essential daily activity. Our system enhances object localization by bridging advanced computer vision-based object detection with spatial sound feedback. We run our method locally on an edge device to protect user privacy. We conducted extensive experiments with 44 participants to study the effectiveness of our system. We evaluated our system using the System Usability Scale and the NASA Task Load Index questionnaires. The experimental results show that our visual assistant system reduces the average object localization time by 37% and improves the successful localization rate by 2.2 times. The positive feedback from the participants highlights the potential of our system to improve the quality of life of visually impaired and blind people. We have made our source code publicly available at https://github.com/IS2AI/visual_assistant to stimulate further research in this area. Published in: 2025 11th International Conference on Control, Automation and Robotics (ICCAR)

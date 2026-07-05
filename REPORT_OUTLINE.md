@@ -129,8 +129,19 @@ relative to the frame.
   our own Ametller/iPhone shelf photos. Artifacts in `object_detector/train_yolo_results/`.
 
 **Results**
-- [PLACEHOLDER — val mAP@0.5, mAP@0.5:0.95.]
-- [PLACEHOLDER — training/val loss & mAP curves from `train_yolo_results/`.]
+- **mAP@0.5 ≈ 0.92** — at an IoU threshold of 0.50, the detector localizes shelf
+  products with high precision/recall.
+- **mAP@0.5:0.95 = 0.58** — averaged over stricter IoU thresholds (0.50–0.95),
+  the score drops, indicating boxes are found reliably but not always tightly
+  aligned to the product edges.
+- **Training curves** (below): all training and validation losses (box, cls, dfl)
+  decrease smoothly and converge, with no divergence between train and val — no
+  sign of overfitting. Precision (~0.92), recall (~0.88), mAP@0.5 (~0.92) and
+  mAP@0.5:0.95 (~0.58) all rise and plateau over ~45 epochs.
+
+  <img src="images/exp1_training_curves.png" width="700" alt="YOLO training and validation curves">
+
+  *Figure 1 — YOLO11 training/validation losses and detection metrics over epochs.*
 - [PLACEHOLDER — 2–3 annotated sample images on our own photos.]
 - [PLACEHOLDER — 640 vs 768 comparison if run.]
 

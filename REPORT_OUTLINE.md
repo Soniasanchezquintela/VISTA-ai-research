@@ -109,38 +109,48 @@ describe_pointed_product - gives the name of the pointed product
 
 ## 4. System components
 
-This section explains **how each part of the system works**. The experiments in
-Section 5 then evaluate these components. The end-to-end flow is:
-voice command → intent → (continuously running) detection + identification +
-tracking → spoken description.
+This section explains **how each part of the system works**, in **pipeline order**.
+The system has two layers: a **perception layer that runs continuously** (detection,
+identification, pointing), feeding a **scene-memory "brain"** that maintains a stable
+picture of the shelf; and a **user-activated layer** (voice → intent) that, on command,
+decides what to do with that picture and hands it to the **description** module for a
+spoken answer. Section 5 then evaluates these components experimentally.
 
-### 4.1 Product detection — YOLO (`object_detector/`)
+### 4.1 Always-on perception
+
+These three run on **every frame**, continuously, independent of any user command.
+Together they answer *"where are the products, what are they, and is the user
+pointing at one?"*
+
+**Product detection — YOLO (`object_detector/`).**
 A YOLO11 model, fine-tuned on SKU110K, draws a bounding box around **every product**
-on the shelf. It is **class-agnostic**: it only answers *"where are the products?"*,
-not *"what are they?"* — there is a single "product" class. Detection runs on every
-frame and feeds boxes to identification and tracking.
+on the shelf. It is **class-agnostic**: it answers only *"where are the products?"*,
+not *"what are they?"* (a single "product" class). Its boxes feed identification,
+pointing, and tracking.
 
-### 4.2 Product identification — CLIP, image-to-image (`object_identifier/`)
+**Product identification — CLIP, image-to-image (`object_identifier/`).**
 Each detected box is cropped and passed through a **frozen CLIP image encoder**
-(`open_clip` ViT-B-32), producing an embedding — a vector that captures what the
-crop looks like. That embedding is compared, by **cosine similarity**, against
-pre-computed embeddings of a catalog of reference product photos. The closest match
-wins, provided it clears a confidence gate (minimum score, plus a margin over the
-next-best *different* product, or the same product appearing several times in the
-top-k). No text or product labels are involved — it compares photo to photo — so it
-is language-independent and needs no per-product training. A recognized product is
-drawn as a **green** box; an unrecognized one stays red.
+(`open_clip` ViT-B-32), producing an embedding — a vector capturing what the crop
+looks like. That embedding is compared by **cosine similarity** against pre-computed
+embeddings of a catalog of reference product photos; the closest match wins if it
+clears a confidence gate (minimum score, plus a margin over the next-best *different*
+product, or the same product appearing several times in the top-k). No text or labels
+are involved — photo is compared to photo — so it is language-independent and needs no
+per-product training. A recognized product is drawn **green**, an unrecognized one red.
 
-### 4.3 Hand & pointing detection — MediaPipe (`hand_detector.py`)
-A pretrained MediaPipe HandLandmarker locates the hand's landmarks in the frame and
-extracts the **index-finger tip**. That point is mapped to a product: if it falls
-**inside** a bounding box, that box is selected; otherwise the **nearest** box within
-a tolerance is chosen. This is what lets the user select a product by pointing.
+**Hand & pointing detection — MediaPipe (`hand_detector.py`).**
+A pretrained MediaPipe HandLandmarker locates the hand and extracts the **index-finger
+tip**. That point is mapped to a product: if it falls **inside** a box, that box is
+selected; otherwise the **nearest** box within a tolerance is chosen. This is what
+lets the user select a product by pointing.
 
-### 4.4 Scene memory / tracking (`scene_memory/`)
-Detection and identification run per-frame and are noisy. Scene memory turns them
-into a **stable, remembered scene** so products keep a consistent identity, survive
-brief occlusion, and can be pointed at. It combines three mechanisms:
+### 4.2 Scene memory — the "brain" (`scene_memory/`)
+
+The perception layer is per-frame and noisy. Scene memory is the component that turns
+that raw, flickering output into a **stable, remembered scene** — products keep a
+consistent identity across frames, survive brief occlusion, and can be pointed at.
+Every action the user requests is answered from this remembered scene, not from a
+single raw frame. It combines four mechanisms:
 
 - **IoU matching** — *Intersection over Union* measures how much two boxes overlap
   relative to their combined area (0 = disjoint, 1 = identical). Each frame, a
@@ -159,17 +169,30 @@ brief occlusion, and can be pointed at. It combines three mechanisms:
   kept as a greyed "lost" box for ~**90 frames (~3 s)** and revived with its original
   ID if it reappears.
 
-### 4.5 Voice → intent (`voice_to_text.py`, `intent_classifier/`)
-When the user speaks, `faster-whisper` transcribes the audio to text. A fine-tuned
-`distilbert-base-multilingual-cased` classifier maps that text to an **intent**
-(describe scene, describe pointed product, navigate to target, …) and extracts a
-**target** product name where relevant. The intent decides which action the system runs.
+### 4.3 User interaction — voice & intent (`voice_to_text.py`, `intent_classifier/`)
 
-### 4.6 Scene description (`scene_memory/`, LLM)
-Given the request and the tracked products, the description module produces the spoken
-answer. Product **coordinates from YOLO are fed to Gemma**, which groups them into
-shelves by position, and a natural-language response is generated (grouping duplicate
-products, counting unrecognized ones) — spoken back to the user in their language.
+This layer is **activated by the user** and is what tells the system *what to do* with
+the scene the components above have built. When the user speaks, `faster-whisper`
+transcribes the audio to text, and a fine-tuned `distilbert-base-multilingual-cased`
+classifier maps that text to an **intent** and extracts a **target** product name where
+relevant. The intent then routes to an action that consumes the perception + scene-memory
+output:
+
+- **"Describe the scene"** → takes the visible products from scene memory (§4.2) and
+  passes them to the description module (§4.4).
+- **"What am I pointing at?"** → takes the product that pointing (§4.1) + scene memory
+  resolved as *touched*, and describes that one.
+- **"Navigate to \<target\>"** → looks up the target product in scene memory.
+
+So the voice layer does not do any vision itself — it selects which already-computed
+result to turn into a spoken answer.
+
+### 4.4 Scene description — final output (`scene_memory/`, LLM)
+
+The last step turns the selected result into the spoken answer. Product **coordinates
+from YOLO are fed to Gemma**, which groups products into shelves by their position, and
+a natural-language response is generated (grouping duplicate products, counting
+unrecognized ones) — then spoken back to the user in their language.
 
 ---
 
@@ -350,8 +373,8 @@ pointing usable.
   new-vs-existing, occlusion survival/removal, pointing hit/miss, voting,
   promotion, bbox smoothing) + qualitative webcam runs comparing baseline vs ours.
 
-*(The three mechanisms — IoU matching, product voting, and motion compensation —
-plus occlusion persistence are explained in Section 4.4.)*
+*(The mechanisms — IoU matching, product voting, motion compensation, and occlusion
+persistence — are explained in Section 4.2.)*
 
 **Results**
 - Unit tests: [PLACEHOLDER — "N/N passing"] covering ID stability, occlusion

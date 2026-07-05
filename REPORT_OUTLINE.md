@@ -144,6 +144,17 @@ tip**. That point is mapped to a product: if it falls **inside** a box, that box
 selected; otherwise the **nearest** box within a tolerance is chosen. This is what
 lets the user select a product by pointing.
 
+*In detail:* the HandLandmarker (`hand_landmarker.task`, float16) runs in image and
+video modes and returns 21 hand landmarks; we use the index-finger-tip landmark as the
+pointing coordinate. Selection is resolved against the tracked boxes in scene memory
+(§4.2), so a product can still be selected even while the hand partially occludes it.
+No custom training is involved — the pretrained model is used as-is.
+
+*Demonstration* — the finger tip resolving to the correct product box:
+
+<img width="447" height="252" alt="Pointing selection example 1" src="https://github.com/user-attachments/assets/a14f51ee-3195-4d6e-a063-c9f4e40b446e" />
+<img width="446" height="245" alt="Pointing selection example 2" src="https://github.com/user-attachments/assets/6f5f82fc-5797-4e28-8d52-ba0f8c2af064" />
+
 ### 4.2 Scene memory — the "brain" (`scene_memory/`)
 
 The perception layer is per-frame and noisy. Scene memory is the component that turns
@@ -193,6 +204,20 @@ The last step turns the selected result into the spoken answer. Product **coordi
 from YOLO are fed to Gemma**, which groups products into shelves by their position, and
 a natural-language response is generated (grouping duplicate products, counting
 unrecognized ones) — then spoken back to the user in their language.
+
+*In detail:* there are two paths. A **templated** path (`describe_scene()` /
+`describe_pointed_product()`) that groups identical SKUs and counts unknowns into a
+fixed Spanish sentence, and an **LLM** path (Gemma) that takes the products and their
+positions and produces a richer, shelf-aware description. The inputs are the visible
+tracks from scene memory (for "describe scene") or the single touched track (for
+"what am I pointing at?").
+
+*Demonstration* — sample outputs:
+- Scene description: [PLACEHOLDER — paste a real example, e.g. *"La escena contiene
+  leche de avena Oatly y leche de soja Alpro. Además, hay 2 productos que no
+  reconozco."*]
+- Pointed product (recognized): [PLACEHOLDER — real example]
+- Pointed product (unrecognized): [PLACEHOLDER — the "aparta la mano" fallback message]
 
 ---
 
@@ -319,39 +344,7 @@ needs fine-tuning / more reference images per SKU. New hypotheses.]
 
 ---
 
-### Experiment 3 — Pointing-based product selection (MediaPipe Hands)
-*Type: integration / evaluation experiment (pretrained model).*
-
-<img width="447" height="252" alt="Screenshot 2026-07-03 at 14 56 52" src="https://github.com/user-attachments/assets/a14f51ee-3195-4d6e-a063-c9f4e40b446e" />
-<img width="446" height="245" alt="Screenshot 2026-07-03 at 14 59 55" src="https://github.com/user-attachments/assets/6f5f82fc-5797-4e28-8d52-ba0f8c2af064" />
-
-
-
-
-**Hypothesis**
-We expect index-finger landmarks from a pretrained hand detector to give a
-pointing signal precise enough to select which detected product a user means,
-without any custom training.
-
-**Experiment setup**
-- **Model:** MediaPipe HandLandmarker (`hand_landmarker.task`, float16), in image
-  and video modes (`hand_detector.py`).
-- **Pointing logic:** [how the finger tip / direction is computed and mapped to a
-  detected box — e.g. tip inside box, else nearest box within tolerance].
-- **Evaluation:** [point at a known target across M trials; report % of trials the
-  intended product was selected; sensitivity to distance/angle/lighting].
-
-**Results**
-- [PLACEHOLDER — selection success rate.]
-- [PLACEHOLDER — screenshots of correct/incorrect selection.]
-
-**Conclusions**
-[Reliability, where it breaks (hand occludes product, multiple boxes overlap),
-interaction with scene memory. New hypotheses.]
-
----
-
-### Experiment 4 — Persistent scene memory vs per-frame detection (tracking)
+### Experiment 3 — Persistent scene memory vs per-frame detection (tracking)
 *Type: algorithmic / ablation experiment (no NN).*
 
 **Hypothesis**
@@ -398,7 +391,7 @@ or appearance-based re-linking to survive these cases.
 
 ---
 
-### Experiment 5 — Voice command understanding (Whisper STT + intent classifier)
+### Experiment 4 — Voice command understanding (Whisper STT + intent classifier)
 *Type: neural-network training experiment (the intent classifier is fine-tuned).*
 
 **Hypothesis**
@@ -428,33 +421,6 @@ enough for the limited command vocabulary of this application.
 [Which intents are reliable vs confused (small dataset risk); how STT errors
 cascade into wrong intents; whether 202 examples / 7 classes is enough or the
 dataset needs expansion; Spanish vs Catalan coverage. New hypotheses.]
-
----
-
-### Experiment 6 — Natural-language description (scene & pointed product)
-*Type: integration experiment (prompt-based / templated, no training).*
-
-**Hypothesis**
-We expect that a concise, rule-based or LLM-generated description of the scene and
-of the pointed product gives a visually impaired user genuinely useful spoken
-information, and that grouping duplicates / counting unknowns avoids overwhelming
-them.
-
-**Experiment setup**
-- **Templated baseline:** `describe_scene()` / `describe_pointed_product()` —
-  group identical SKUs, count unknowns, output Spanish sentences.
-- **LLM option:** [Ollama VLM — Gemma3/Qwen — in `ask_qwen.py`] for richer
-  descriptions. [State which is used in the live system.]
-- **Inputs:** visible tracks from scene memory; the touched track for pointing.
-- **Evaluation:** [qualitative — sample outputs rated for clarity/usefulness;
-  note any hallucinations from the LLM path].
-
-**Results**
-- [PLACEHOLDER — sample scene description outputs.]
-- [PLACEHOLDER — sample pointed-product outputs (known vs unknown product).]
-
-[Template vs LLM trade-off (reliability vs richness); hallucination risk; what a
-real user would actually need. New hypotheses.]
 
 ---
 

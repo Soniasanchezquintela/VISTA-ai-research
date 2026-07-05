@@ -1,23 +1,18 @@
 #! /usr/bin/env python3
 from pathlib import Path
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 import argparse
 import cmd
 import cv2
+import logging
 import queue
 import shlex
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 import threading
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
 
 print("Loading required modules...", flush=True)
 
@@ -30,14 +25,25 @@ from voice_to_text import VoiceCommandProcessor
 from intent_classifier import SimpleIntentClassifier, Intent
 
 
-# Global objects for the interactive CLI and threaded webcam processing
+# Global objects for the interactive CLI and scene processing
+MAIN_THREAD_LOG_PATH = Path("/tmp/vista-main.log")
+logger = logging.getLogger("vista")
 scene_memory = ShelfSceneMemory()
+scene_memory_lock = threading.Lock()
 voice_processor = VoiceCommandProcessor()
 intent_classifier = SimpleIntentClassifier()
 
 
+@dataclass
+class MainThreadCommand:
+    name: str
+    args: tuple = ()
+    kwargs: dict = field(default_factory=dict)
+    reply_queue: queue.Queue | None = None
+
+
 class ThreadOutputRouter:
-    """Route stdout/stderr to a file for one thread without affecting others."""
+    """Route stdout/stderr per thread while leaving other threads untouched."""
 
     def __init__(self, fallback):
         self._fallback = fallback
@@ -71,6 +77,18 @@ class ThreadOutputRouter:
 _stdout_router = None
 _stderr_router = None
 
+
+def configure_logging() -> None:
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    if logger.handlers:
+        return
+
+    handler = logging.FileHandler(MAIN_THREAD_LOG_PATH, mode="a", encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
+
+
 def install_thread_output_routers() -> tuple[ThreadOutputRouter, ThreadOutputRouter]:
     global _stdout_router, _stderr_router
 
@@ -82,6 +100,14 @@ def install_thread_output_routers() -> tuple[ThreadOutputRouter, ThreadOutputRou
         sys.stderr = _stderr_router
 
     return _stdout_router, _stderr_router
+
+
+@contextmanager
+def redirect_main_thread_output():
+    stdout_router, stderr_router = install_thread_output_routers()
+    with MAIN_THREAD_LOG_PATH.open("a", encoding="utf-8", buffering=1) as log_file:
+        with stdout_router.redirect(log_file), stderr_router.redirect(log_file):
+            yield
 
 def is_window_open(window_name: str) -> bool:
     try:
@@ -98,28 +124,11 @@ def close_window_if_open(window_name: str) -> None:
         pass
 
 def wait_for_preview_close(window_name: str) -> None:
-    old_terminal_settings = None
-    terminal_is_tty = sys.stdin.isatty()
-
-    if sys.platform != "win32" and terminal_is_tty:
-        old_terminal_settings = termios.tcgetattr(sys.stdin)
-        tty.setcbreak(sys.stdin.fileno())
-
     try:
         while is_window_open(window_name):
             if cv2.waitKey(50) != -1:
                 break
-
-            if sys.platform == "win32":
-                if msvcrt.kbhit():
-                    msvcrt.getch()
-                    break
-            elif terminal_is_tty and select.select([sys.stdin], [], [], 0)[0]:
-                sys.stdin.read(1)
-                break
     finally:
-        if old_terminal_settings is not None:
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_terminal_settings)
         close_window_if_open(window_name)
 
 def execute_pipeline(frame, object_detector, hand_detector, object_identifier, timestamp_ms=0, verbose=True):
@@ -146,13 +155,14 @@ def process_image(image_path: str, save: bool = False) -> int:
     detections, hand_detection, identifications = execute_pipeline(frame, detector, hand_detector, object_identifier)
 
 
-    scene_memory.update(
-        0, 
-        detections, 
-        identifications, 
-        hand_detection)    
- 
-    annotated_frame = scene_memory.annotate_image(frame)
+    with scene_memory_lock:
+        scene_memory.update(
+            0,
+            detections,
+            identifications,
+            hand_detection)
+
+        annotated_frame = scene_memory.annotate_image(frame)
 
     if save:
         # Save annotated image
@@ -267,13 +277,14 @@ def process_video(video_path: str, save: bool = False) -> int:
             verbose=False,
         )
 
-        scene_memory.update(
-            frame_count, 
-            detections, 
-            identifications,
-            hand_detection)
+        with scene_memory_lock:
+            scene_memory.update(
+                frame_count,
+                detections,
+                identifications,
+                hand_detection)
 
-        annotated_frame = scene_memory.annotate_image(frame)
+            annotated_frame = scene_memory.annotate_image(frame)
 
         # Display annotated frame
         cv2.imshow(window_name, annotated_frame)
@@ -307,24 +318,6 @@ def process_video(video_path: str, save: bool = False) -> int:
     close_window_if_open(window_name)
 
     return 0
-
-def start_webcam(
-    webcam_index: int,
-    save: bool = False,
-    stop_event: threading.Event | None = None,
-) -> int:
-    """Run webcam processing while writing its output to a RAM-backed log file."""
-    log_directory = Path("/dev/shm") if Path("/dev/shm").is_dir() else Path(tempfile.gettempdir())
-    log_path = log_directory / "vista-webcam.log"
-
-    print(f"Webcam output is being written to: {log_path}")
-    print(f"Follow it from another terminal with: tail -f {log_path}")
-
-    stdout_router, stderr_router = install_thread_output_routers()
-    with log_path.open("w", encoding="utf-8", buffering=1) as log_file:
-        with stdout_router.redirect(log_file), stderr_router.redirect(log_file):
-            return process_webcam(webcam_index, save=save, stop_event=stop_event)
-
 
 def open_webcam_capture(webcam_index: int) -> cv2.VideoCapture:
     """Open a camera using the native backend, with OpenCV fallback."""
@@ -405,148 +398,149 @@ def print_webcam_info(webcam_index: int) -> None:
         cap.release()
 
 
-def process_webcam(
-    webcam_index: int,
-    save: bool = False,
-    stop_event: threading.Event | None = None,
-) -> int:
-    cap = open_webcam_capture(webcam_index)
+class WebcamSession:
+    def __init__(self, webcam_index: int, save: bool = False):
+        self.cap = open_webcam_capture(webcam_index)
+        self.save = save
+        self.out = None
+        self.output_path = Path("webcam_output.mp4")
+        self.raw_output_path = Path("webcam_output_raw.mp4")
+        self.window_name = "Annotated Video"
+        self.frame_count = 0
+        self.webcam_started_at = time.monotonic()
+        self.last_timestamp_ms = -1
+        self.closed = False
 
-    video_config = {
-        0: {"width": 640, "height": 480, "fps": 30},
-        1: {"width": 800, "height": 600, "fps": 25},
-        2: {"width": 1024, "height": 768, "fps": 10},
-        3: {"width": 1280, "height": 720, "fps": 30},
-    }
+        video_config = {
+            0: {"width": 640, "height": 480, "fps": 30},
+            1: {"width": 800, "height": 600, "fps": 25},
+            2: {"width": 1024, "height": 768, "fps": 10},
+            3: {"width": 1280, "height": 720, "fps": 30},
+        }
+        video_config_index = 2
 
-    video_config_index = 2
+        # YUYV is a V4L2 pixel format and is not meaningful for AVFoundation.
+        if sys.platform.startswith("linux"):
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, video_config[video_config_index]["width"])
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, video_config[video_config_index]["height"])
+        self.cap.set(cv2.CAP_PROP_FPS, video_config[video_config_index]["fps"])
 
-    # YUYV is a V4L2 pixel format and is not meaningful for AVFoundation.
-    if sys.platform.startswith("linux"):
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, video_config[video_config_index]["width"])
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, video_config[video_config_index]["height"])
-    cap.set(cv2.CAP_PROP_FPS, video_config[video_config_index]["fps"])
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        if self.fps <= 0:
+            self.fps = 30
+        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        print(f"FPS: {self.fps}, Resolution: {self.width}x{self.height}")
 
-    # Get video properties
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0:
-        fps = 30
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print(f"FPS: {fps}, Resolution: {width}x{height}")
-    
-    # Define video writer
-    out = None
-    output_path = Path("webcam_output.mp4")
-    raw_output_path = Path("webcam_output_raw.mp4")
-    if save:
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(raw_output_path), fourcc, fps, (width, height))
-        if not out.isOpened():
-            cap.release()
-            raise ValueError(f"Cannot create output video file: {raw_output_path}")
+        if self.save:
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            self.out = cv2.VideoWriter(
+                str(self.raw_output_path),
+                fourcc,
+                self.fps,
+                (self.width, self.height),
+            )
+            if not self.out.isOpened():
+                self.cap.release()
+                raise ValueError(f"Cannot create output video file: {self.raw_output_path}")
 
-    
-    print("Processing webcam...")
-    print("Press 'q' to close the preview window.")
+        print("Processing webcam...")
+        print("Press 'q' to close the preview window, or type stop_webcam.")
 
-    window_name = "Annotated Video"
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
 
-    # Create the processing pipeline objects
-    detector = ObjectDetector()
-    hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
-    object_identifier = ObjectIdentifier()
+        self.detector = ObjectDetector()
+        self.hand_detector = HandDetector(mode=HandDetector.Mode.VIDEO)
+        self.object_identifier = ObjectIdentifier()
 
-    scene_memory.reset()
+        with scene_memory_lock:
+            scene_memory.reset()
 
-    frame_count = 0
-    # Live-camera backends do not guarantee CAP_PROP_POS_MSEC: AVFoundation in
-    # particular may repeatedly return zero. MediaPipe's video-mode hand
-    # detector requires strictly increasing timestamps, so use a monotonic
-    # local clock and enforce a one-millisecond minimum step between frames.
-    webcam_started_at = time.monotonic()
-    last_timestamp_ms = -1
-    
-    while stop_event is None or not stop_event.is_set():
-        ret, frame = cap.read()
+    def step(self) -> bool:
+        ret, frame = self.cap.read()
         if not ret:
-            break
+            return False
 
-        if stop_event is not None and stop_event.is_set():
-            break
-      
-        frame_count += 1
-        
-        # Run inference on frame
-        timestamp_ms = int((time.monotonic() - webcam_started_at) * 1000)
-        timestamp_ms = max(timestamp_ms, last_timestamp_ms + 1)
-        last_timestamp_ms = timestamp_ms
-        # Measure elapsed time for inference
+        self.frame_count += 1
+        timestamp_ms = int((time.monotonic() - self.webcam_started_at) * 1000)
+        timestamp_ms = max(timestamp_ms, self.last_timestamp_ms + 1)
+        self.last_timestamp_ms = timestamp_ms
+
         start_time = time.time()
-
-        verbose = frame_count % 15 == 0
+        verbose = self.frame_count % 15 == 0
 
         if verbose:
             print("=" * 80)
 
         detections, hand_detection, identifications = execute_pipeline(
             frame,
-            detector,
-            hand_detector,
-            object_identifier,
+            self.detector,
+            self.hand_detector,
+            self.object_identifier,
             timestamp_ms,
             verbose=False,
         )
-        end_time = time.time()
-        inference_time = end_time - start_time
+        inference_time = time.time() - start_time
 
         if verbose:
             print(f"Inference speed: {1.0/inference_time:.3f} frames/s")
 
-        scene_memory.update(
-            frame_count, 
-            detections, 
-            identifications,
-            hand_detection,
-            verbose=verbose)
+        with scene_memory_lock:
+            scene_memory.update(
+                self.frame_count,
+                detections,
+                identifications,
+                hand_detection,
+                verbose=verbose)
+            annotated_frame = scene_memory.annotate_image(frame, verbose)
 
+        cv2.imshow(self.window_name, annotated_frame)
 
-        # Display annotated frame
-        # if hand_detection.annotated_image is not None:
-        #     preview_image = hand_detection.annotated_image.copy()
-        # else:
-        #     preview_image = frame.copy()
-        annotated_frame = scene_memory.annotate_image(frame, verbose)
-        cv2.imshow(window_name, annotated_frame)
-        
-        # Process GUI events so the window updates and can receive key presses
         if cv2.waitKey(1) & 0xFF == ord("q"):
             print("Preview stopped by user.")
-            break
-        if not is_window_open(window_name):
+            return False
+        if not is_window_open(self.window_name):
             print("Preview window closed by user.")
-            break
-        
-        # Write frame to output video
-        if save and out:
-            out.write(annotated_frame)
+            return False
 
-    if stop_event is not None and stop_event.is_set():
-        print("Webcam stop requested.")
+        if self.save and self.out:
+            self.out.write(annotated_frame)
 
-    # Release resources
-    cap.release()
-    if out:
-        out.release()
-        if convert_video_for_mobile_sharing(raw_output_path, output_path):
-            raw_output_path.unlink(missing_ok=True)
-            print(f"Saved WhatsApp-compatible annotated video to: {output_path}")
-        else:
-            raw_output_path.replace(output_path)
-            print(f"Saved annotated video to: {output_path}")
-    close_window_if_open(window_name)
+        return True
+
+    def close(self) -> None:
+        if self.closed:
+            return
+
+        self.closed = True
+        self.cap.release()
+        if self.out:
+            self.out.release()
+            if convert_video_for_mobile_sharing(self.raw_output_path, self.output_path):
+                self.raw_output_path.unlink(missing_ok=True)
+                print(f"Saved WhatsApp-compatible annotated video to: {self.output_path}")
+            else:
+                self.raw_output_path.replace(self.output_path)
+                print(f"Saved annotated video to: {self.output_path}")
+        close_window_if_open(self.window_name)
+
+
+def process_webcam(
+    webcam_index: int,
+    save: bool = False,
+    stop_event: threading.Event | None = None,
+) -> int:
+    session = WebcamSession(webcam_index, save=save)
+    try:
+        while stop_event is None or not stop_event.is_set():
+            if not session.step():
+                break
+
+        if stop_event is not None and stop_event.is_set():
+            print("Webcam stop requested.")
+    finally:
+        session.close()
 
     return 0
 
@@ -587,36 +581,33 @@ class CommandInterpreter(cmd.Cmd):
     intro = "Interactive CLI. Type help or ? to list commands."
     prompt = "vista> "
 
-    def __init__(self):
+    def __init__(self, main_command_queue: queue.Queue[MainThreadCommand]):
         super().__init__()
-        self._webcam_jobs: queue.Queue[tuple[int, threading.Event] | None] = queue.Queue()
-        self._webcam_lock = threading.Condition()
-        self.webcam_stop_event: threading.Event | None = None
-        self.webcam_running = False
-        self.webcam_thread = threading.Thread(
-            target=self._webcam_worker,
-            name="webcam-processing",
+        self.main_command_queue = main_command_queue
+
+    def _run_on_main_thread(self, name: str, *args, wait: bool = True, **kwargs):
+        reply_queue = queue.Queue(maxsize=1) if wait else None
+        self.main_command_queue.put(
+            MainThreadCommand(
+                name=name,
+                args=args,
+                kwargs=kwargs,
+                reply_queue=reply_queue,
+            )
         )
-        self.webcam_thread.start()
 
-    def _webcam_worker(self) -> None:
-        """Process every webcam session on one long-lived thread for Qt/OpenCV."""
-        while True:
-            job = self._webcam_jobs.get()
-            if job is None:
-                return
+        if reply_queue is None:
+            return True
 
-            device_index, stop_event = job
-            try:
-                start_webcam(device_index, stop_event=stop_event)
-            except Exception as exc:
-                print(f"Webcam processing failed: {exc}")
-            finally:
-                with self._webcam_lock:
-                    if self.webcam_stop_event is stop_event:
-                        self.webcam_stop_event = None
-                        self.webcam_running = False
-                    self._webcam_lock.notify_all()
+        success, result = reply_queue.get()
+        if not success:
+            print(result)
+            return False
+
+        return True
+
+    def _print_main_log_hint(self) -> None:
+        print(f"Runtime output is being written to: {MAIN_THREAD_LOG_PATH}")
 
     def do_process_image(self, arg: str) -> None:
         """process_image <image_path>"""
@@ -635,29 +626,25 @@ class CommandInterpreter(cmd.Cmd):
             print(f"Error: image file does not exist: {image_path}")
             return
 
-        print(f"Processing image: {image_path}")
-        image_thread = threading.Thread(
-            target=process_image,
-            args=(str(image_path),),
-            name="image-processing",
-        )
-        image_thread.start()
+        self._print_main_log_hint()
+        self._run_on_main_thread("process_image", str(image_path), False)
 
     def do_process_video(self, arg: str) -> None:
-            """process_video <video_path>"""
-            parts = shlex.split(arg)
+        """process_video <video_path>"""
+        parts = shlex.split(arg)
 
-            if len(parts) != 1:
-                print("Usage: process_video <video_path>")
-                return
+        if len(parts) != 1:
+            print("Usage: process_video <video_path>")
+            return
 
-            video_path = Path(parts[0])
+        video_path = Path(parts[0])
 
-            if not video_path.exists():
-                print(f"Error: video file does not exist: {video_path}")
-                return
+        if not video_path.exists():
+            print(f"Error: video file does not exist: {video_path}")
+            return
 
-            process_video(video_path.name)
+        self._print_main_log_hint()
+        self._run_on_main_thread("process_video", str(video_path), False)
 
     def do_start_webcam(self, arg: str) -> None:
         """start_webcam [device_index] -- start webcam processing."""
@@ -675,28 +662,9 @@ class CommandInterpreter(cmd.Cmd):
                 print("Error: device_index must be an integer, for example: start_webcam 0")
                 return
 
-        # OpenCV's macOS GUI backend (Cocoa) must create and update windows from
-        # the application's main thread. Running it in the background worker
-        # results in the unhelpful "Unknown C++ exception" message. The command
-        # remains interactive on macOS: press q in the preview to return here.
-        if sys.platform == "darwin":
-            print("Starting webcam on the main thread. Press 'q' in the preview to stop.")
-            try:
-                process_webcam(device_index)
-            except Exception as exc:
-                print(f"Webcam processing failed: {exc}")
-            return
-
-        with self._webcam_lock:
-            if self.webcam_running:
-                print("Webcam processing is already running. Use stop_webcam before starting another one.")
-                return
-
-            self.webcam_stop_event = threading.Event()
-            self.webcam_running = True
-            self._webcam_jobs.put((device_index, self.webcam_stop_event))
-
-        print(f"Started webcam processing on device {device_index}. Use stop_webcam to stop it.")
+        print(f"Starting webcam on device {device_index}.")
+        self._print_main_log_hint()
+        self._run_on_main_thread("start_webcam", device_index, False)
 
     def do_webcam_info(self, arg: str) -> None:
         """webcam_info <device_index> -- show camera details and common supported modes."""
@@ -711,11 +679,6 @@ class CommandInterpreter(cmd.Cmd):
             print("Error: device_index must be an integer, for example: webcam_info 0")
             return
 
-        with self._webcam_lock:
-            if self.webcam_running:
-                print("Stop webcam processing before requesting webcam information.")
-                return
-
         try:
             print_webcam_info(device_index)
         except Exception as exc:
@@ -727,26 +690,12 @@ class CommandInterpreter(cmd.Cmd):
             print("Usage: stop_webcam")
             return
 
-        with self._webcam_lock:
-            if self.webcam_stop_event is None:
-                print("Webcam processing is not running.")
-                return
-
-            self.webcam_stop_event.set()
-            if self._webcam_lock.wait_for(lambda: not self.webcam_running, timeout=5):
-                print("Webcam processing stopped.")
-            else:
-                print("Webcam stop requested; waiting for the current frame to finish.")
+        if self._run_on_main_thread("stop_webcam"):
+            print("Webcam stopped.")
 
     def do_exit(self, arg: str) -> bool:
         """exit"""
-        if self.webcam_stop_event is not None:
-            print("Stopping webcam processing...")
-            self.webcam_stop_event.set()
-            with self._webcam_lock:
-                self._webcam_lock.wait_for(lambda: not self.webcam_running, timeout=5)
-        self._webcam_jobs.put(None)
-        self.webcam_thread.join(timeout=5)
+        self._run_on_main_thread("exit", wait=False)
         print("Exiting.")
         return True
 
@@ -782,9 +731,13 @@ class CommandInterpreter(cmd.Cmd):
         print(f"Intent: {intent}, Target: {target}, Confidence: {confidence:.2f}")
 
         if intent == Intent.DESCRIBE_SCENE:
-            self.speak(scene_memory.describe_scene())
+            with scene_memory_lock:
+                description = scene_memory.describe_scene()
+            self.speak(description)
         elif intent == Intent.DESCRIBE_POINTED_PRODUCT:
-            self.speak(scene_memory.describe_pointed_product())
+            with scene_memory_lock:
+                description = scene_memory.describe_pointed_product()
+            self.speak(description)
         elif intent == Intent.NAVIGATE_TO_TARGET:
             if target is None:
                 self.speak("No he entendido el producto que estás buscando. ¿Puedes repetir?")
@@ -795,29 +748,159 @@ class CommandInterpreter(cmd.Cmd):
 
     def do_describe_scene(self, arg: str) -> None:
         """Describe the current scene."""
-        description = scene_memory.describe_scene()
+        with scene_memory_lock:
+            description = scene_memory.describe_scene()
         self.speak(description)
 
     def do_describe_pointed_product(self, arg: str) -> None:
         """Describe the product that is currently being pointed at."""
-        description = scene_memory.describe_pointed_product()
+        with scene_memory_lock:
+            description = scene_memory.describe_pointed_product()
         self.speak(description)
 
     def do_reset_scene_memory(self, arg: str) -> None:
         """Reset the scene memory."""
-        scene_memory.reset()
+        with scene_memory_lock:
+            scene_memory.reset()
+
+
+def reply_to_command(command: MainThreadCommand, success: bool, result=None) -> None:
+    if command.reply_queue is not None:
+        command.reply_queue.put((success, result))
+
+
+def handle_main_thread_command_with_redirect(
+    command: MainThreadCommand,
+    webcam_session: WebcamSession | None,
+) -> tuple[WebcamSession | None, bool]:
+    with redirect_main_thread_output():
+        return handle_main_thread_command(command, webcam_session)
+
+
+def handle_main_thread_command(
+    command: MainThreadCommand,
+    webcam_session: WebcamSession | None,
+) -> tuple[WebcamSession | None, bool]:
+    keep_running = True
+
+    try:
+        if command.name == "start_webcam":
+            if webcam_session is not None:
+                reply_to_command(command, False, "Webcam processing is already running.")
+                return webcam_session, keep_running
+
+            device_index, save = command.args
+            logger.info("Starting webcam device %s", device_index)
+            webcam_session = WebcamSession(device_index, save=save)
+            reply_to_command(command, True, None)
+            return webcam_session, keep_running
+
+        if command.name == "stop_webcam":
+            if webcam_session is None:
+                reply_to_command(command, False, "Webcam processing is not running.")
+                return webcam_session, keep_running
+
+            logger.info("Webcam stop requested")
+            print("Webcam stop requested.")
+            webcam_session.close()
+            reply_to_command(command, True, None)
+            return None, keep_running
+
+        if command.name == "process_image":
+            if webcam_session is not None:
+                reply_to_command(command, False, "Stop webcam processing before processing an image.")
+                return webcam_session, keep_running
+
+            image_path, save = command.args
+            logger.info("Processing image %s", image_path)
+            print(f"Processing image: {image_path}")
+            result = process_image(image_path, save=save)
+            reply_to_command(command, True, result)
+            return webcam_session, keep_running
+
+        if command.name == "process_video":
+            if webcam_session is not None:
+                reply_to_command(command, False, "Stop webcam processing before processing a video.")
+                return webcam_session, keep_running
+
+            video_path, save = command.args
+            logger.info("Processing video %s", video_path)
+            print(f"Processing video: {video_path}")
+            result = process_video(video_path, save=save)
+            reply_to_command(command, True, result)
+            return webcam_session, keep_running
+
+        if command.name in {"exit", "quit"}:
+            if webcam_session is not None:
+                logger.info("Stopping webcam processing during exit")
+                print("Stopping webcam processing...")
+                webcam_session.close()
+            reply_to_command(command, True, None)
+            return None, False
+
+        reply_to_command(command, False, f"Unknown main-thread command: {command.name}")
+        return webcam_session, keep_running
+    except Exception as exc:
+        logger.exception("%s failed", command.name)
+        reply_to_command(command, False, f"{command.name} failed: {exc}")
+        return webcam_session, keep_running
+
+
+def run_main_thread_command_loop(command_queue: queue.Queue[MainThreadCommand]) -> None:
+    webcam_session = None
+    keep_running = True
+
+    while keep_running:
+        if webcam_session is None:
+            command = command_queue.get()
+            webcam_session, keep_running = handle_main_thread_command_with_redirect(command, webcam_session)
+            continue
+
+        try:
+            command = command_queue.get_nowait()
+        except queue.Empty:
+            command = None
+
+        if command is not None:
+            webcam_session, keep_running = handle_main_thread_command_with_redirect(command, webcam_session)
+            continue
+
+        with redirect_main_thread_output():
+            keep_webcam_running = webcam_session.step()
+
+        if not keep_webcam_running:
+            with redirect_main_thread_output():
+                webcam_session.close()
+                print("Webcam processing stopped.")
+                logger.info("Webcam processing stopped")
+            webcam_session = None
+
+    if webcam_session is not None:
+        with redirect_main_thread_output():
+            webcam_session.close()
+
 
 def main():
 
     args = parse_args()
 
-    counter = sum([bool(args.image), bool(args.video), bool(args.webcam)])
+    counter = sum([bool(args.image), bool(args.video), args.webcam is not None])
     if counter > 1:
         print("Error: Please provide only one of --image, --video, or --webcam.")
         exit(1)
     
     if counter == 0:
-        CommandInterpreter().cmdloop()
+        configure_logging()
+        install_thread_output_routers()
+        main_command_queue: queue.Queue[MainThreadCommand] = queue.Queue()
+        interpreter = CommandInterpreter(main_command_queue)
+        command_thread = threading.Thread(
+            target=interpreter.cmdloop,
+            name="command-interpreter",
+        )
+        command_thread.start()
+        run_main_thread_command_loop(main_command_queue)
+        command_thread.join()
         exit(0)
 
     if args.image:
@@ -826,7 +909,7 @@ def main():
     if args.video:
         exit(process_video(args.video, save=args.save))
 
-    if args.webcam:
+    if args.webcam is not None:
         exit(process_webcam(args.webcam, save=args.save))
 
 if __name__ == "__main__":

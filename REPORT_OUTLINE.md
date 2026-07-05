@@ -333,41 +333,52 @@ entirely, and compares like-with-like (photo vs photo) instead of photo vs label
 is also zero-shot (no fine-tuning) and scales simply by adding more reference images.
 
 **Experiment setup**
-- **Model:** `open_clip` ViT-B-32 (laion2b), frozen — no fine-tuning.
-- **Catalog:** [N] reference products (currently **10** SKUs, mostly plant-based
-  milks, scraped from Ametller; embeddings precomputed in
-  `product_db/embeddings/`). Metadata in `products.sqlite`.
+- **Catalog:** ~**52 SKUs** (54 reference images, milks and plant-based drinks
+  scraped from Ametller); embeddings precomputed in `product_db/embeddings/`,
+  metadata in `metadata.csv` / `products.sqlite`.
 - **Matching:** cosine similarity of the crop embedding vs catalog embeddings;
-  accept if `score ≥ MIN_SCORE (0.70)` and `confidence ≥ MIN_CONFIDENCE (0.80)`;
-  recent change: when no match clears 0.70, the system returns the top candidate
-  options instead of a single answer.
-- **Evaluation:** validated against our **own labelled dataset of iPhone shelf photos**
-  (products cropped and hand-labelled with their true SKU), reporting recall@1.
+  accept if `score ≥ 0.70` and a margin/consensus check passes (margin ≥ 0.02 over
+  the next different SKU, or the same SKU appears ≥2× in the top-k).
+- **Encoders compared (A/B):**
+  - `open_clip` ViT-B-32 (laion2b), frozen — the generic model in use.
+  - a **CLIP fine-tuned on ~1000 Mercadona products** (our earlier image-to-text
+    model), reused here as an **image encoder only**.
+- **Evaluation, two modes** on our **own labelled iPhone shelf dataset** (485 boxes,
+  hand-labelled with true SKU):
+  1. *Full pipeline* (`metrics.py`): YOLO detection → identify → accept gate → compare.
+  2. *Encoder-only recall@1*: crop each **ground-truth** box, take the nearest catalog
+     image — isolates encoder quality from detection and the accept gate.
 
 **Results**
-- **recall@1 = 50%** on the custom iPhone-labelled dataset — the correct product was
-  the top match half the time.
-- [PLACEHOLDER — false-accept rate on out-of-catalog products vs threshold, if measured.]
-- [PLACEHOLDER — examples of correct match vs confusion (similar packaging).]
+- **Full pipeline** (`metrics.py`, 27 images / 485 boxes): detection F1 ≈ **0.80**;
+  identification **precision ≈ recall ≈ 0.48**. Of 385 correctly-detected boxes:
+  232 correct, 68 wrong SKU, **85 rejected** by the accept gate.
+- **Encoder-only recall@1** (ground-truth boxes, no accept gate):
+  - `open_clip` (generic): **68.5%**
+  - Mercadona fine-tuned: **64.7%**
+- Prior image-to-text approach: recall@1 ≈ 70% on a different ~1000-product **text**
+  catalog — not directly comparable (see note below).
+- Worst products (both encoders): size/variant look-alikes — e.g. `oatly_avena_500ml`,
+  `yosoy_avena_250ml`, `cacaolat_sinazucar`, `ametller_llet_semidesnatada`.
 
-> **Note on comparison with the prior method.** The earlier image-to-text approach
-> reported recall@1 ≈ 70%, but on a **different test set** (a ~1000-product text
-> catalog), so the two numbers are **not directly comparable**. The switch to
-> image-to-image was **not** motivated by higher recall — it was motivated by
-> robustness: the image-to-text method failed *systematically and reproducibly* on
-> specific products due to the language dependency, whereas image-to-image removes
-> text entirely. The 50% figure is the honest recall@1 of the current method on
-> real-world iPhone photos.
+> **Note on the prior method.** The switch from image-to-text to image-to-image was
+> **not** for higher recall — it was for robustness: image-to-text failed
+> *systematically* on specific products due to a language dependency (Spanish/Catalan
+> labels vs an English-trained text encoder), whereas image-to-image removes text
+> entirely.
 
 **Conclusions**
-Half of top-1 matches are correct on real photos — usable, but with clear headroom.
-The likely limiters are the **tiny catalog** (~10 SKUs, mostly visually-similar milks,
-so near-neighbours are easy to confuse) and the **domain gap** between clean catalog
-reference photos and phone photos of real shelves (lighting, angle, glare). The design
-trade-off is deliberate: we accepted lower raw recall in exchange for eliminating the
-systematic language-driven failures of the previous approach. Next hypotheses: more
-reference images per SKU and a broader, less visually-homogeneous catalog should raise
-recall@1; fine-tuning the encoder on in-domain crops is a further option.
+1. **The fine-tuned encoder does not help.** Fine-tuning was done for image-to-**text**
+   alignment and gives *slightly worse* image-to-**image** recall (64.7% vs 68.5%), so
+   we keep the generic `open_clip` encoder.
+2. **The encoder is not the bottleneck — the acceptance gate is.** Encoder recall@1 is
+   ~68% but the full pipeline scores ~48%; the ~20-point gap is the accept gate
+   rejecting correct matches (85 rejections). With ~1 reference image per SKU the
+   consensus path is effectively dead and acceptance leans on a tiny margin between
+   look-alikes. Relaxing the gate / adding reference images is the highest-value fix.
+3. **Remaining errors are a catalog problem, not a model problem.** Both encoders fail
+   on the same size/variant look-alikes, which more reference images per SKU (and
+   size-aware cues) would address — not a different model.
 
 ---
 

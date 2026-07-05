@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import sounddevice as sd
-from faster_whisper import WhisperModel
 from scipy.io.wavfile import write
 
 
@@ -44,6 +43,8 @@ def transcribe_file(
     device: str,
     compute_type: str,
 ) -> str:
+    from faster_whisper import WhisperModel
+
     model = WhisperModel(
         model_size,
         device=device,

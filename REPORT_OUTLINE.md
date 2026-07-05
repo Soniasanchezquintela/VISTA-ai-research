@@ -96,23 +96,146 @@ python project.py --image path/to/shelf.jpg   # single image
 python project.py --webcam 0                   # live; type `listen` for a voice command
 
 Case 1 - Image input:
-process_image
-process_image <image_path>
-describe_scene
-Describe the current scene.
+process_image - process_image <image_path>
+describe_scene - Describe the current scene
 
 Case 2 - Video input:
-
-```
-
-### Tests
-```bash
-python test_scene_memory.py
+listen - activates the module that listens for the users voice command
+describe_scene - describes the products present in the scene
+describe_pointed_product - gives the name of the pointed product
 ```
 
 ---
 
-## 3. Experiments
+## 4. System components
+
+This section explains **how each part of the system works**, in **pipeline order**.
+The system has two layers: a **perception layer that runs continuously** (detection,
+identification, pointing), feeding a **scene-memory "brain"** that maintains a stable
+picture of the shelf; and a **user-activated layer** (voice → intent) that, on command,
+decides what to do with that picture and hands it to the **description** module for a
+spoken answer. Section 5 then evaluates these components experimentally.
+
+### 4.1 Always-on perception
+
+These three run on **every frame**, continuously, independent of any user command.
+Together they answer *"where are the products, what are they, and is the user
+pointing at one?"*
+
+**Product detection — YOLO (`object_detector/`).**
+A YOLO11 model, fine-tuned on SKU110K, draws a bounding box around **every product**
+on the shelf. It is **class-agnostic**: it answers only *"where are the products?"*,
+not *"what are they?"* (a single "product" class). Its boxes feed identification,
+pointing, and tracking.
+
+**Product identification — CLIP, image-to-image (`object_identifier/`).**
+Each detected box is cropped and passed through a **frozen CLIP image encoder**
+(`open_clip` ViT-B-32), producing an embedding — a vector capturing what the crop
+looks like. That embedding is compared by **cosine similarity** against pre-computed
+embeddings of a catalog of reference product photos; the closest match wins if it
+clears a confidence gate (minimum score, plus a margin over the next-best *different*
+product, or the same product appearing several times in the top-k). No text or labels
+are involved — photo is compared to photo — so it is language-independent and needs no
+per-product training. A recognized product is drawn **green**, an unrecognized one red.
+
+**Hand & pointing detection — MediaPipe (`hand_detector.py`).**
+A pretrained MediaPipe HandLandmarker locates the hand and extracts the **index-finger
+tip**. That point is mapped to a product: if it falls **inside** a box, that box is
+selected; otherwise the **nearest** box within a tolerance is chosen. This is what
+lets the user select a product by pointing.
+
+*In detail:* the HandLandmarker (`hand_landmarker.task`, float16) runs in image and
+video modes and returns 21 hand landmarks; we use the index-finger-tip landmark as the
+pointing coordinate. Selection is resolved against the tracked boxes in scene memory
+(§4.2), so a product can still be selected even while the hand partially occludes it.
+No custom training is involved — the pretrained model is used as-is.
+
+*Demonstration* — the finger tip resolving to the correct product box:
+
+<img width="447" height="252" alt="Pointing selection example 1" src="https://github.com/user-attachments/assets/a14f51ee-3195-4d6e-a063-c9f4e40b446e" />
+<img width="446" height="245" alt="Pointing selection example 2" src="https://github.com/user-attachments/assets/6f5f82fc-5797-4e28-8d52-ba0f8c2af064" />
+
+### 4.2 Scene memory — the "brain" (`scene_memory/`)
+
+The perception layer is per-frame and noisy. Scene memory is the component that turns
+that raw, flickering output into a **stable, remembered scene** — products keep a
+consistent identity across frames, survive brief occlusion, and can be pointed at.
+Every action the user requests is answered from this remembered scene, not from a
+single raw frame. It combines four mechanisms:
+
+- **IoU matching** — *Intersection over Union* measures how much two boxes overlap
+  relative to their combined area (0 = disjoint, 1 = identical). Each frame, a
+  remembered product is matched to the new detection it overlaps most; overlap
+  **≥ 30%** = same product (keep its ID and history), below 30% = not a match.
+- **Product voting** — a single CLIP reading can be wrong. Each tracked product keeps
+  a per-identity **vote tally**; every confident frame adds its score, and the label
+  shown is whichever identity leads. One bad frame can't override a repeated,
+  confident answer; low-confidence frames don't vote.
+- **Motion compensation** — a camera pan (head turn) moves every box at once and would
+  break every match, leaving "ghost" boxes and renumbering. Since a pan shifts every
+  product by the *same* vector, we recover it by **displacement voting** (the shift the
+  most products agree on) and move old boxes to their predicted positions before
+  matching, so identities survive. Handles translation, not large rotation/zoom.
+- **Occlusion persistence** — a product that disappears (e.g. a hand covering it) is
+  kept as a greyed "lost" box for ~**90 frames (~3 s)** and revived with its original
+  ID if it reappears.
+
+*Why it matters (vs. no tracking):* the original per-frame approach
+(`ShelfSceneMemory`) resets every frame — boxes flicker, IDs change constantly, and
+pointing is impossible (`get_touched_object()` always returns `None`). Our
+`TrackedShelfSceneMemory` is a drop-in replacement (same interface) that fixes all of
+this. It is validated by unit tests (`test_scene_memory.py`: ID stability,
+occlusion survival/removal, pointing resolution, voting, bbox smoothing) and by
+qualitative webcam runs (stable IDs, grey box reviving after a hand passes, no
+ghost-box swarm on head turns).
+
+*Demonstration:* [PLACEHOLDER — screenshot of a product keeping its ID while briefly
+covered (grey "lost" box → revived), and green boxes once CLIP recognizes a product.]
+
+### 4.3 User interaction — voice & intent (`voice_to_text.py`, `intent_classifier/`)
+
+This layer is **activated by the user** and is what tells the system *what to do* with
+the scene the components above have built. When the user speaks, `faster-whisper`
+transcribes the audio to text, and a fine-tuned `distilbert-base-multilingual-cased`
+classifier maps that text to an **intent** and extracts a **target** product name where
+relevant. The intent then routes to an action that consumes the perception + scene-memory
+output:
+
+- **"Describe the scene"** → takes the visible products from scene memory (§4.2) and
+  passes them to the description module (§4.4).
+- **"What am I pointing at?"** → takes the product that pointing (§4.1) + scene memory
+  resolved as *touched*, and describes that one.
+- **"Navigate to \<target\>"** → looks up the target product in scene memory.
+
+So the voice layer does not do any vision itself — it selects which already-computed
+result to turn into a spoken answer.
+
+### 4.4 Scene description — final output (`scene_memory/`, LLM)
+
+The last step turns the selected result into the spoken answer. Product **coordinates
+from YOLO are fed to Gemma**, which groups products into shelves by their position, and
+a natural-language response is generated (grouping duplicate products, counting
+unrecognized ones) — then spoken back to the user in their language.
+
+*In detail:* there are two paths. A **templated** path (`describe_scene()` /
+`describe_pointed_product()`) that groups identical SKUs and counts unknowns into a
+fixed Spanish sentence, and an **LLM** path (Gemma) that takes the products and their
+positions and produces a richer, shelf-aware description. The inputs are the visible
+tracks from scene memory (for "describe scene") or the single touched track (for
+"what am I pointing at?").
+
+*Demonstration* — sample outputs:
+- Scene description: [PLACEHOLDER — paste a real example, e.g. *"La escena contiene
+  leche de avena Oatly y leche de soja Alpro. Además, hay 2 productos que no
+  reconozco."*]
+- Pointed product (recognized): [PLACEHOLDER — real example]
+- Pointed product (unrecognized): [PLACEHOLDER — the "aparta la mano" fallback message]
+
+---
+
+## 5. Experiments
+
+These are different experiments that we ran in order to find the optimal configuration of our system and which modules work best.
 
 > Each subsection: **Hypothesis → Setup → Results → Conclusions.**
 
@@ -122,12 +245,8 @@ python test_scene_memory.py
 *Type: neural-network training experiment.*
 
 **Hypothesis**
-A general-purpose - out of the box - YOLO model will not, out of the box, reliably localize the
-small, densely packed, repeated products found on supermarket shelves. We expect
-that fine-tuning YOLO11 on SKU110K (a dataset built specifically for dense retail
-shelves) will substantially improve detection recall on our own shelf photos,
-and that a larger input resolution will help most because the products are small
-relative to the frame.
+We expect that fine-tuning YOLO11 on SKU110K (a dataset built specifically for dense retail
+shelves) will allow for accurate object detection in a supermarket setting with a mAP@0.5 > 80%. This is only used for drawing bounding boxes around products, not classifying them.
 
 **Experiment setup**
 - **Base model:** `yolo11m.pt` (Ultralytics YOLO11-medium).
@@ -155,13 +274,9 @@ relative to the frame.
   <img src="images/Yolo-results.png" width="700" alt="YOLO training and validation curves">
 
   *Figure 1 — YOLO11 training/validation losses and detection metrics over epochs.*
-- [PLACEHOLDER — 2–3 annotated sample images on our own photos.]
-- [PLACEHOLDER — 640 vs 768 comparison if run.]
 
 **Conclusions**
-[What the numbers show: did fine-tuning + higher resolution help? Failure modes —
-tiny products, occlusion, glare, top/bottom shelf rows. Did early stopping trigger
-before 50 epochs (overfitting risk on a single class)? New hypotheses for next round.]
+[The hypothesis was validated and the fine-tuned model was used in the project.]
 
 ---
 
@@ -218,139 +333,56 @@ entirely, and compares like-with-like (photo vs photo) instead of photo vs label
 is also zero-shot (no fine-tuning) and scales simply by adding more reference images.
 
 **Experiment setup**
-- **Model:** `open_clip` ViT-B-32 (laion2b), frozen — no fine-tuning.
-- **Catalog:** [N] reference products (currently **10** SKUs, mostly plant-based
-  milks, scraped from Ametller; embeddings precomputed in
-  `product_db/embeddings/`). Metadata in `products.sqlite`.
+- **Catalog:** ~**52 SKUs** (54 reference images, milks and plant-based drinks
+  scraped from Ametller); embeddings precomputed in `product_db/embeddings/`,
+  metadata in `metadata.csv` / `products.sqlite`.
 - **Matching:** cosine similarity of the crop embedding vs catalog embeddings;
-  accept if `score ≥ MIN_SCORE (0.70)` and `confidence ≥ MIN_CONFIDENCE (0.80)`;
-  recent change: when no match clears 0.70, the system returns the top candidate
-  options instead of a single answer.
-- **Evaluation:** [held-out crops of catalog products + distractor products;
-  report top-1 accuracy and false-accept rate on unknowns.]
+  accept if `score ≥ 0.70` and a margin/consensus check passes (margin ≥ 0.02 over
+  the next different SKU, or the same SKU appears ≥2× in the top-k).
+- **Encoders compared (A/B):**
+  - `open_clip` ViT-B-32 (laion2b), frozen — the generic model in use.
+  - a **CLIP fine-tuned on ~1000 Mercadona products** (our earlier image-to-text
+    model), reused here as an **image encoder only**.
+- **Evaluation, two modes** on our **own labelled iPhone shelf dataset** (485 boxes,
+  hand-labelled with true SKU):
+  1. *Full pipeline* (`metrics.py`): YOLO detection → identify → accept gate → compare.
+  2. *Encoder-only recall@1*: crop each **ground-truth** box, take the nearest catalog
+     image — isolates encoder quality from detection and the accept gate.
 
 **Results**
-- [PLACEHOLDER — top-1 identification accuracy on catalog products.]
-- [PLACEHOLDER — false-accept rate on out-of-catalog products vs threshold.]
-- [PLACEHOLDER — examples of correct match vs confusion (similar packaging).]
+- **Full pipeline** (`metrics.py`, 27 images / 485 boxes): detection F1 ≈ **0.80**;
+  identification **precision ≈ recall ≈ 0.48**. Of 385 correctly-detected boxes:
+  232 correct, 68 wrong SKU, **85 rejected** by the accept gate.
+- **Encoder-only recall@1** (ground-truth boxes, no accept gate):
+  - `open_clip` (generic): **68.5%**
+  - Mercadona fine-tuned: **64.7%**
+- Prior image-to-text approach: recall@1 ≈ 70% on a different ~1000-product **text**
+  catalog — not directly comparable (see note below).
+- Worst products (both encoders): size/variant look-alikes — e.g. `oatly_avena_500ml`,
+  `yosoy_avena_250ml`, `cacaolat_sinazucar`, `ametller_llet_semidesnatada`.
+
+> **Note on the prior method.** The switch from image-to-text to image-to-image was
+> **not** for higher recall — it was for robustness: image-to-text failed
+> *systematically* on specific products due to a language dependency (Spanish/Catalan
+> labels vs an English-trained text encoder), whereas image-to-image removes text
+> entirely.
 
 **Conclusions**
-[Effect of tiny catalog (only similar products → easy to confuse); threshold
-trade-off (recall vs false accepts); whether zero-shot CLIP is good enough or
-needs fine-tuning / more reference images per SKU. New hypotheses.]
+1. **The fine-tuned encoder does not help.** Fine-tuning was done for image-to-**text**
+   alignment and gives *slightly worse* image-to-**image** recall (64.7% vs 68.5%), so
+   we keep the generic `open_clip` encoder.
+2. **The encoder is not the bottleneck — the acceptance gate is.** Encoder recall@1 is
+   ~68% but the full pipeline scores ~48%; the ~20-point gap is the accept gate
+   rejecting correct matches (85 rejections). With ~1 reference image per SKU the
+   consensus path is effectively dead and acceptance leans on a tiny margin between
+   look-alikes. Relaxing the gate / adding reference images is the highest-value fix.
+3. **Remaining errors are a catalog problem, not a model problem.** Both encoders fail
+   on the same size/variant look-alikes, which more reference images per SKU (and
+   size-aware cues) would address — not a different model.
 
 ---
 
-### Experiment 3 — Pointing-based product selection (MediaPipe Hands)
-*Type: integration / evaluation experiment (pretrained model).*
-
-<img width="447" height="252" alt="Screenshot 2026-07-03 at 14 56 52" src="https://github.com/user-attachments/assets/a14f51ee-3195-4d6e-a063-c9f4e40b446e" />
-<img width="446" height="245" alt="Screenshot 2026-07-03 at 14 59 55" src="https://github.com/user-attachments/assets/6f5f82fc-5797-4e28-8d52-ba0f8c2af064" />
-
-
-
-
-**Hypothesis**
-We expect index-finger landmarks from a pretrained hand detector to give a
-pointing signal precise enough to select which detected product a user means,
-without any custom training.
-
-**Experiment setup**
-- **Model:** MediaPipe HandLandmarker (`hand_landmarker.task`, float16), in image
-  and video modes (`hand_detector.py`).
-- **Pointing logic:** [how the finger tip / direction is computed and mapped to a
-  detected box — e.g. tip inside box, else nearest box within tolerance].
-- **Evaluation:** [point at a known target across M trials; report % of trials the
-  intended product was selected; sensitivity to distance/angle/lighting].
-
-**Results**
-- [PLACEHOLDER — selection success rate.]
-- [PLACEHOLDER — screenshots of correct/incorrect selection.]
-
-**Conclusions**
-[Reliability, where it breaks (hand occludes product, multiple boxes overlap),
-interaction with scene memory. New hypotheses.]
-
----
-
-### Experiment 4 — Persistent scene memory vs per-frame detection (tracking)
-*Type: algorithmic / ablation experiment (no NN).*
-
-**Hypothesis**
-A per-frame pipeline that re-detects and re-identifies from scratch each frame
-will produce unstable output (flickering boxes, changing IDs) and cannot support
-pointing, because nothing persists between frames. We expect that adding a
-tracking layer — matching boxes across frames, remembering them briefly when
-occluded, and voting on their identity over time — will give stable identities,
-survive a hand passing over a product, stay stable when the camera pans, and make
-pointing usable.
-
-**Experiment setup**
-- **Baseline:** original `ShelfSceneMemory` — resets every frame;
-  `get_touched_object()` returns `None` (pointing impossible).
-- **Ours:** `TrackedShelfSceneMemory`. The public interface is unchanged, so it
-  is a drop-in replacement. It combines three mechanisms (detailed below):
-  IoU matching, product voting, and global-motion compensation.
-- **Evaluation:** unit tests (`test_scene_memory.py`: ID stability,
-  new-vs-existing, occlusion survival/removal, pointing hit/miss, voting,
-  promotion, bbox smoothing) + qualitative webcam runs comparing baseline vs ours.
-
-**Core components**
-
-*(1) IoU (Intersection over Union) — the matching mechanism.*
-IoU measures how much two boxes overlap, relative to their combined area
-(0 = disjoint, 1 = identical). Each frame, every remembered product is matched to
-the new detection it overlaps most; overlap **≥ 30%** counts as "the same product"
-(keep its ID and history), below 30% does not. The 30% threshold balances two
-failure modes: too high loses identity on small movements, too low merges
-neighbouring products.
-
-*(2) Product voting — the identification mechanism.*
-A single CLIP reading can be wrong (blur, glare, angle). Instead of trusting one
-frame, each track keeps a per-identity **vote tally**: every confident frame adds
-its score, and the displayed label is whichever identity leads. A single bad frame
-therefore cannot override a repeated, confident answer. Low-confidence frames cast
-no vote (the system stays silent rather than guess); votes reset if a track loses
-its identity. This is what makes the green "recognized" label trustworthy.
-
-*(3) Motion compensation — robustness to camera movement.*
-Because matching relies on IoU, a camera pan (the user turning their head) moves
-every box at once and would break every match — leaving greyed "ghost" boxes and
-renumbering everything. Insight: a pan shifts every product by the *same* vector.
-We recover that vector by **displacement voting** — measuring how far each old box
-would move to reach each new box, and taking the shift the most products agree on
-(robust to large shifts, occluded products, and one product moving on its own). We
-then shift old boxes to their predicted positions before matching, so identities
-survive the pan. Limitation: this models translation only, not large rotation/zoom.
-
-*Occlusion persistence.* A product that disappears (e.g. a hand covering it) is
-kept as a greyed "lost" track for up to **90 frames (~3 s)** before removal, then
-revived with its original ID if it reappears — enough time for a slow, deliberate
-hand placement.
-
-**Results**
-- Unit tests: [PLACEHOLDER — "N/N passing"] covering ID stability, occlusion
-  survival, pointing resolution, voting, and bbox smoothing.
-- [PLACEHOLDER — before/after webcam: box-flicker / ID-switch count over a fixed
-  clip; box survival time under hand occlusion.]
-- [PLACEHOLDER — head-turn comparison: ghost-box count with vs without motion
-  compensation.]
-- [PLACEHOLDER — screenshot of a product keeping its ID while briefly covered
-  (grey "lost" box → revived), and green boxes when CLIP recognizes a product.]
-
-**Conclusions**
-Tracking is what makes pointing function at all (the baseline always returns
-`None`). IoU matching + 90-frame persistence give stable IDs and survive brief
-occlusion; voting stabilises the identity label; motion compensation removes the
-ghost-box artefact on head turns. Remaining failure modes: very fast *independent*
-motion of a single product (an *ID switch* — the box is treated as old-gone +
-new-arrived, losing its vote history), and large rotation/zoom (not captured by
-translation-only compensation). Future work: motion prediction (Kalman/SORT-style)
-or appearance-based re-linking to survive these cases.
-
----
-
-### Experiment 5 — Voice command understanding (Whisper STT + intent classifier)
+### Experiment 3 — Voice command understanding (Whisper STT + intent classifier)
 *Type: neural-network training experiment (the intent classifier is fine-tuned).*
 
 **Hypothesis**
@@ -383,34 +415,7 @@ dataset needs expansion; Spanish vs Catalan coverage. New hypotheses.]
 
 ---
 
-### Experiment 6 — Natural-language description (scene & pointed product)
-*Type: integration experiment (prompt-based / templated, no training).*
-
-**Hypothesis**
-We expect that a concise, rule-based or LLM-generated description of the scene and
-of the pointed product gives a visually impaired user genuinely useful spoken
-information, and that grouping duplicates / counting unknowns avoids overwhelming
-them.
-
-**Experiment setup**
-- **Templated baseline:** `describe_scene()` / `describe_pointed_product()` —
-  group identical SKUs, count unknowns, output Spanish sentences.
-- **LLM option:** [Ollama VLM — Gemma3/Qwen — in `ask_qwen.py`] for richer
-  descriptions. [State which is used in the live system.]
-- **Inputs:** visible tracks from scene memory; the touched track for pointing.
-- **Evaluation:** [qualitative — sample outputs rated for clarity/usefulness;
-  note any hallucinations from the LLM path].
-
-**Results**
-- [PLACEHOLDER — sample scene description outputs.]
-- [PLACEHOLDER — sample pointed-product outputs (known vs unknown product).]
-
-[Template vs LLM trade-off (reliability vs richness); hallucination risk; what a
-real user would actually need. New hypotheses.]
-
----
-
-## ❇️ 4. Overall conclusions & future work
+## ❇️ 6. Overall conclusions & future work
 
 [Synthesize across experiments: what works end-to-end today, the weakest link
 (e.g. the 10-SKU catalog limiting identification), most promising next steps,
@@ -430,7 +435,7 @@ of sub-contexts within the supermarket (e.g., product type, disposition, light, 
 
 ---
 
-## 5. References
+## 7. References
 
 [Format consistently — e.g. numbered or author-year. Pull the related papers from
 `papers.md`. Suggested entries:]

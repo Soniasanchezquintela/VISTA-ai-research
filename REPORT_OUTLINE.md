@@ -11,17 +11,19 @@
 > 🔗 **Repository:** https://github.com/Soniasanchezquintela/VISTA-ai-research
 > (Link also available in the PPT presentation).
 > 
-[1–3 sentence elevator pitch: who it's for, what problem it solves, what it does.]
+“Accessibility if not about convenience, 
+It is about dignity”. Improving the shopping experience for visually impaired people.
 
-**Team & roles:** [name — component], [name — component], [name — component], [name — component]
+**Team Members:** Ramon Viedma, Sonia Sánchez, Nuria Olvera, Petros Zonias
+**Advisor:** Amanda Duarte
 
 ---
 
 ## 1. Overview
 
-**Social Motivation/Impact.** [For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
+**Social Motivation/Impact.** For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
 blind or visually impaired person, finding a product on a shelf can require depending on someone else being available
-to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like teh visually impaired]
+to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like teh visually impaired.
 
 **Goal.** VISTA is a prototype assistive system that uses a single camera and the
 user's voice to (a) describe the products on a shelf, and (b) tell the user what
@@ -35,8 +37,7 @@ product they are pointing at — spoken back in their language.
    and resolves which one the finger is pointing at.
 4. It speaks back a concise, useful answer.
 
-**Scope of this report.** [State what is fully working, what is a prototype, and
-what is out of scope — e.g. real-time wearable hardware, full store navigation.]
+**Scope of this report.** This report presents the structure of our project, how we built each module, and the results of the experiments we conducted.
 
 ### System architecture
 

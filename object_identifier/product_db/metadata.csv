@@ -40,15 +40,14 @@ leche_letona_cristal_1l,Leche entera Letona Cristal 1l,leche
 leche_lletnostra_desnatada_1l,Leche desnatada Llet Nostra 1l,leche
 leche_lletnostra_entera_1l,Leche entera Llet Nostra 1l,leche
 leche_lletnostra_semidesnatada_1l,Leche semidesnatada Llet Nostra 1l,leche
-leche_lletnostra_semidesnatada__sinlactosa_1l_001,Leche semidesnatada sin lactosa Llet Nostra 1l,leche
+leche_lletnostra_semidesnatada__sinlactosa_1l,Leche semidesnatada sin lactosa Llet Nostra 1l,leche
 leche_santagadea_cabra_semidesnatada_ecologica_1l,Leche de cabra semidesnatada ecológica Santa Gadea 1l,leche
 leche_xanceda_semidesnatada_eco_1l,Leche semidesnatada ecológica Xanceda 1l,leche
-oatly_avena_500ml, 
-oatly_avena_barista_1l, 
-oatly_avena_nosugar_1l,
-yosoy_almendra_nueces_1l, 
-yosoy_arroz_avellanas_1l, 
-yosoy_arroz_coco_1l,
-yosoy_avena_calcio_1l, 
-yosoy_avena_ecologico_1l,
-leche_lletnostra_semidesnatada__sinlactosa_1l
+bebidavegetal_oatly_avena_500ml,Bebida de avena Oatly 500ml,bebida_vegetal
+bebidavegetal_oatly_avena_barista_1l,Bebida de avena barista Oatly 1l,bebida_vegetal
+bebidavegetal_oatly_avena_nosugar_1l,Bebida de avena sin azúcar Oatly 1l,bebida_vegetal
+bebidavegetal_yosoy_almendra_nueces_1l,Bebida de almendra y nueces Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_arroz_avellanas_1l,Bebida de arroz y avellanas Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_arroz_coco_1l,Bebida de arroz y coco Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_avena_calcio_1l,Bebida de avena con calcio Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_avena_ecologico_1l,Bebida de avena ecológica Yo Soy 1l,bebida_vegetal

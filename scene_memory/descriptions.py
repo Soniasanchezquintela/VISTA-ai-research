@@ -91,20 +91,14 @@ def shelf_label_en(shelf_index: int, shelf_count: int) -> str:
 
 def counted_names_text(
     names: list[str],
-    possible: bool,
     language: str,
 ) -> list[str]:
     parts = []
     for name, count in Counter(names).most_common():
-        if possible:
-            label = f"posible {name}" if language == "es" else f"possible {name}"
-        else:
-            label = name
-
         if count == 1:
-            parts.append(label)
+            parts.append(name)
         else:
-            parts.append(f"{count} {label}")
+            parts.append(f"{count} {name}")
 
     return parts
 
@@ -128,16 +122,12 @@ def summarize_tracks(
     language: str = "es",
 ) -> str:
     known_names = []
-    possible_names = []
     unknown_count = 0
 
     for track in tracks:
         description = track.description
         if is_unknown_track(track):
-            if description:
-                possible_names.append(description)
-            else:
-                unknown_count += 1
+            unknown_count += 1
             continue
 
         if description:
@@ -147,10 +137,7 @@ def summarize_tracks(
 
     parts = []
     parts.extend(
-        counted_names_text(known_names, possible=False, language=language)
-    )
-    parts.extend(
-        counted_names_text(possible_names, possible=True, language=language)
+        counted_names_text(known_names, language=language)
     )
 
     if unknown_count:

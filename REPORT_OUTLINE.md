@@ -107,7 +107,73 @@ describe_pointed_product - gives the name of the pointed product
 
 ---
 
-## 4. Experiments
+## 4. System components
+
+This section explains **how each part of the system works**. The experiments in
+Section 5 then evaluate these components. The end-to-end flow is:
+voice command → intent → (continuously running) detection + identification +
+tracking → spoken description.
+
+### 4.1 Product detection — YOLO (`object_detector/`)
+A YOLO11 model, fine-tuned on SKU110K, draws a bounding box around **every product**
+on the shelf. It is **class-agnostic**: it only answers *"where are the products?"*,
+not *"what are they?"* — there is a single "product" class. Detection runs on every
+frame and feeds boxes to identification and tracking.
+
+### 4.2 Product identification — CLIP, image-to-image (`object_identifier/`)
+Each detected box is cropped and passed through a **frozen CLIP image encoder**
+(`open_clip` ViT-B-32), producing an embedding — a vector that captures what the
+crop looks like. That embedding is compared, by **cosine similarity**, against
+pre-computed embeddings of a catalog of reference product photos. The closest match
+wins, provided it clears a confidence gate (minimum score, plus a margin over the
+next-best *different* product, or the same product appearing several times in the
+top-k). No text or product labels are involved — it compares photo to photo — so it
+is language-independent and needs no per-product training. A recognized product is
+drawn as a **green** box; an unrecognized one stays red.
+
+### 4.3 Hand & pointing detection — MediaPipe (`hand_detector.py`)
+A pretrained MediaPipe HandLandmarker locates the hand's landmarks in the frame and
+extracts the **index-finger tip**. That point is mapped to a product: if it falls
+**inside** a bounding box, that box is selected; otherwise the **nearest** box within
+a tolerance is chosen. This is what lets the user select a product by pointing.
+
+### 4.4 Scene memory / tracking (`scene_memory/`)
+Detection and identification run per-frame and are noisy. Scene memory turns them
+into a **stable, remembered scene** so products keep a consistent identity, survive
+brief occlusion, and can be pointed at. It combines three mechanisms:
+
+- **IoU matching** — *Intersection over Union* measures how much two boxes overlap
+  relative to their combined area (0 = disjoint, 1 = identical). Each frame, a
+  remembered product is matched to the new detection it overlaps most; overlap
+  **≥ 30%** = same product (keep its ID and history), below 30% = not a match.
+- **Product voting** — a single CLIP reading can be wrong. Each tracked product keeps
+  a per-identity **vote tally**; every confident frame adds its score, and the label
+  shown is whichever identity leads. One bad frame can't override a repeated,
+  confident answer; low-confidence frames don't vote.
+- **Motion compensation** — a camera pan (head turn) moves every box at once and would
+  break every match, leaving "ghost" boxes and renumbering. Since a pan shifts every
+  product by the *same* vector, we recover it by **displacement voting** (the shift the
+  most products agree on) and move old boxes to their predicted positions before
+  matching, so identities survive. Handles translation, not large rotation/zoom.
+- **Occlusion persistence** — a product that disappears (e.g. a hand covering it) is
+  kept as a greyed "lost" box for ~**90 frames (~3 s)** and revived with its original
+  ID if it reappears.
+
+### 4.5 Voice → intent (`voice_to_text.py`, `intent_classifier/`)
+When the user speaks, `faster-whisper` transcribes the audio to text. A fine-tuned
+`distilbert-base-multilingual-cased` classifier maps that text to an **intent**
+(describe scene, describe pointed product, navigate to target, …) and extracts a
+**target** product name where relevant. The intent decides which action the system runs.
+
+### 4.6 Scene description (`scene_memory/`, LLM)
+Given the request and the tracked products, the description module produces the spoken
+answer. Product **coordinates from YOLO are fed to Gemma**, which groups them into
+shelves by position, and a natural-language response is generated (grouping duplicate
+products, counting unrecognized ones) — spoken back to the user in their language.
+
+---
+
+## 5. Experiments
 
 These are different experiments that we ran in order to find the optimal configuration of our system and which modules work best.
 
@@ -284,38 +350,8 @@ pointing usable.
   new-vs-existing, occlusion survival/removal, pointing hit/miss, voting,
   promotion, bbox smoothing) + qualitative webcam runs comparing baseline vs ours.
 
-**Core components**
-
-*(1) IoU (Intersection over Union) — the matching mechanism.*
-IoU measures how much two boxes overlap, relative to their combined area
-(0 = disjoint, 1 = identical). Each frame, every remembered product is matched to
-the new detection it overlaps most; overlap **≥ 30%** counts as "the same product"
-(keep its ID and history), below 30% does not. The 30% threshold balances two
-failure modes: too high loses identity on small movements, too low merges
-neighbouring products.
-
-*(2) Product voting — the identification mechanism.*
-A single CLIP reading can be wrong (blur, glare, angle). Instead of trusting one
-frame, each track keeps a per-identity **vote tally**: every confident frame adds
-its score, and the displayed label is whichever identity leads. A single bad frame
-therefore cannot override a repeated, confident answer. Low-confidence frames cast
-no vote (the system stays silent rather than guess); votes reset if a track loses
-its identity. This is what makes the green "recognized" label trustworthy.
-
-*(3) Motion compensation — robustness to camera movement.*
-Because matching relies on IoU, a camera pan (the user turning their head) moves
-every box at once and would break every match — leaving greyed "ghost" boxes and
-renumbering everything. Insight: a pan shifts every product by the *same* vector.
-We recover that vector by **displacement voting** — measuring how far each old box
-would move to reach each new box, and taking the shift the most products agree on
-(robust to large shifts, occluded products, and one product moving on its own). We
-then shift old boxes to their predicted positions before matching, so identities
-survive the pan. Limitation: this models translation only, not large rotation/zoom.
-
-*Occlusion persistence.* A product that disappears (e.g. a hand covering it) is
-kept as a greyed "lost" track for up to **90 frames (~3 s)** before removal, then
-revived with its original ID if it reappears — enough time for a slow, deliberate
-hand placement.
+*(The three mechanisms — IoU matching, product voting, and motion compensation —
+plus occlusion persistence are explained in Section 4.4.)*
 
 **Results**
 - Unit tests: [PLACEHOLDER — "N/N passing"] covering ID stability, occlusion
@@ -399,7 +435,7 @@ real user would actually need. New hypotheses.]
 
 ---
 
-## ❇️ 5. Overall conclusions & future work
+## ❇️ 6. Overall conclusions & future work
 
 [Synthesize across experiments: what works end-to-end today, the weakest link
 (e.g. the 10-SKU catalog limiting identification), most promising next steps,
@@ -419,7 +455,7 @@ of sub-contexts within the supermarket (e.g., product type, disposition, light, 
 
 ---
 
-## 6. References
+## 7. References
 
 [Format consistently — e.g. numbered or author-year. Pull the related papers from
 `papers.md`. Suggested entries:]

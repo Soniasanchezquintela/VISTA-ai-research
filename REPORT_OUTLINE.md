@@ -341,18 +341,33 @@ is also zero-shot (no fine-tuning) and scales simply by adding more reference im
   accept if `score ≥ MIN_SCORE (0.70)` and `confidence ≥ MIN_CONFIDENCE (0.80)`;
   recent change: when no match clears 0.70, the system returns the top candidate
   options instead of a single answer.
-- **Evaluation:** [held-out crops of catalog products + distractor products;
-  report top-1 accuracy and false-accept rate on unknowns.]
+- **Evaluation:** validated against our **own labelled dataset of iPhone shelf photos**
+  (products cropped and hand-labelled with their true SKU), reporting recall@1.
 
 **Results**
-- [PLACEHOLDER — top-1 identification accuracy on catalog products.]
-- [PLACEHOLDER — false-accept rate on out-of-catalog products vs threshold.]
+- **recall@1 = 50%** on the custom iPhone-labelled dataset — the correct product was
+  the top match half the time.
+- [PLACEHOLDER — false-accept rate on out-of-catalog products vs threshold, if measured.]
 - [PLACEHOLDER — examples of correct match vs confusion (similar packaging).]
 
+> **Note on comparison with the prior method.** The earlier image-to-text approach
+> reported recall@1 ≈ 70%, but on a **different test set** (a ~1000-product text
+> catalog), so the two numbers are **not directly comparable**. The switch to
+> image-to-image was **not** motivated by higher recall — it was motivated by
+> robustness: the image-to-text method failed *systematically and reproducibly* on
+> specific products due to the language dependency, whereas image-to-image removes
+> text entirely. The 50% figure is the honest recall@1 of the current method on
+> real-world iPhone photos.
+
 **Conclusions**
-[Effect of tiny catalog (only similar products → easy to confuse); threshold
-trade-off (recall vs false accepts); whether zero-shot CLIP is good enough or
-needs fine-tuning / more reference images per SKU. New hypotheses.]
+Half of top-1 matches are correct on real photos — usable, but with clear headroom.
+The likely limiters are the **tiny catalog** (~10 SKUs, mostly visually-similar milks,
+so near-neighbours are easy to confuse) and the **domain gap** between clean catalog
+reference photos and phone photos of real shelves (lighting, angle, glare). The design
+trade-off is deliberate: we accepted lower raw recall in exchange for eliminating the
+systematic language-driven failures of the previous approach. Next hypotheses: more
+reference images per SKU and a broader, less visually-homogeneous catalog should raise
+recall@1; fine-tuning the encoder on in-domain crops is a further option.
 
 ---
 

@@ -42,7 +42,7 @@ def transcribe_file(
     language: str | None,
     device: str,
     compute_type: str,
-) -> str:
+) -> tuple[str, str]:
     from faster_whisper import WhisperModel
 
     model = WhisperModel(
@@ -72,7 +72,8 @@ def transcribe_file(
         print(f"[{segment.start:.2f}s -> {segment.end:.2f}s] {text}")
         text_parts.append(text)
 
-    return " ".join(text_parts).strip()
+    text = " ".join(text_parts).strip()
+    return text, info.language
 
 
 class VoiceCommandProcessor:
@@ -82,7 +83,7 @@ class VoiceCommandProcessor:
         self.device = device
         self.compute_type = compute_type
 
-    def process_voice_command(self, duration_s: float = 5.0) -> str:
+    def process_voice_command(self, duration_s: float = 5.0) -> tuple[str, str]:
         audio = record_audio(duration_s)
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -91,14 +92,14 @@ class VoiceCommandProcessor:
         save_wav(audio, wav_path)
 
         try:
-            final_text = transcribe_file(
+            final_text, language = transcribe_file(
                 audio_path=wav_path,
                 model_size=self.model_size,
                 language=self.language,
                 device=self.device,
                 compute_type=self.compute_type,
             )
-            return final_text
+            return final_text, language
         finally:
             wav_path.unlink(missing_ok=True)
 
@@ -119,7 +120,7 @@ def main() -> None:
     save_wav(audio, wav_path)
 
     try:
-        final_text = transcribe_file(
+        final_text, _ = transcribe_file(
             audio_path=wav_path,
             model_size=args.model,
             language=args.language,

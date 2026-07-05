@@ -21,6 +21,7 @@ from hand_detector import HandDetector
 from object_identifier import ObjectIdentifier
 from scene_memory import ProductIdentification
 from scene_memory.tracked_scene_memory import TrackedShelfSceneMemory as ShelfSceneMemory
+from speak import text_to_speech
 from voice_to_text import VoiceCommandProcessor
 from intent_classifier import SimpleIntentClassifier, Intent
 
@@ -722,15 +723,16 @@ class CommandInterpreter(cmd.Cmd):
         print(f"Unknown command: {line}")
         print("Type help or ? to list available commands.")
 
-    def speak(self, text: str) -> None:
+    def speak(self, text: str, language: str = "es") -> None:
         """Speak the given text using the system's text-to-speech engine."""
         # For the moment, simply print the text.
         print(text)
+        text_to_speech(text, gender="Male", lang=language)
 
     def do_listen(self, arg: str) -> None:
         """listen -- start listening for voice commands."""
         print("Listening for voice commands for 5 seconds...")
-        detected_text = voice_processor.process_voice_command()
+        detected_text, language = voice_processor.process_voice_command()
         print(f"Detected voice command: {detected_text}")
 
         intent, target, confidence = intent_classifier.classify(detected_text)
@@ -739,18 +741,18 @@ class CommandInterpreter(cmd.Cmd):
         if intent == Intent.DESCRIBE_SCENE:
             with scene_memory_lock:
                 description = scene_memory.describe_scene()
-            self.speak(description)
+            self.speak(description, language)
         elif intent == Intent.DESCRIBE_POINTED_PRODUCT:
             with scene_memory_lock:
                 description = scene_memory.describe_pointed_product()
-            self.speak(description)
+            self.speak(description, language)
         elif intent == Intent.NAVIGATE_TO_TARGET:
             if target is None:
-                self.speak("No he entendido el producto que estás buscando. ¿Puedes repetir?")
+                self.speak("No he entendido el producto que estás buscando. ¿Puedes repetir?", language)
             else:
-                self.speak(f"[SceneMemory] Navigating to target: {target}")
+                self.speak(f"[SceneMemory] Navigating to target: {target}", language)
         elif intent == Intent.UNKNOWN:
-            self.speak("No te he entendido. ¿Puedes repetir?")
+            self.speak("No te he entendido. ¿Puedes repetir?", language)
 
     def do_describe_scene(self, arg: str) -> None:
         """Describe the current scene."""

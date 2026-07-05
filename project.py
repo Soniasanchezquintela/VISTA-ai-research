@@ -120,6 +120,12 @@ def close_window_if_open(window_name: str) -> None:
         return
     try:
         cv2.destroyWindow(window_name)
+        for _ in range(5):
+            cv2.waitKey(1)
+        if is_window_open(window_name):
+            cv2.destroyAllWindows()
+            for _ in range(5):
+                cv2.waitKey(1)
     except cv2.error:
         pass
 

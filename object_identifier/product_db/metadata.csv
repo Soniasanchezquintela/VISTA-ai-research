@@ -1,10 +1,45 @@
 sku_id,description,category
-bebidavegetal_yosoy_arroz_coco_1l,Bebida de arroz con coco Yo Soy 1l,bebida_vegetal
-bebidavegetal_ametller_orxata_1l,Horchata de chufa Ametller Origen 1l,bebida_vegetal
+bebidavegetal_almendrola_almendra_1l,Bebida de almendra Almendrola 1l,bebida_vegetal
+bebidavegetal_almendrola_almendra_sinazucar_barista_1l,Bebida de almendra sin azúcar barista Almendrola 1l,bebida_vegetal
+bebidavegetal_almendrola_sinazucar_1l,Bebida de almendra sin azúcar Almendrola 1l,bebida_vegetal
+bebidavegetal_alpro_avena_barista_1l,Bebida de avena barista Alpro 1l,bebida_vegetal
+bebidavegetal_ametller_ametlla_cerosucre_barista_1l,Bebida de almendra sin azúcar barista Ametller 1l,bebida_vegetal
+begudavegetal_ametller_ametlla_cerosucre_calci_1l,Bebida de almendra sin azúcar con calcio Ametller 1l,bebida_vegetal
+begudavegetal_ametller_ametlla_cerosucre_calci_6l,Bebida de almendra sin azúcar con calcio Ametller 1l,bebida_vegetal
+bebidavegetal_ametller_arros_1l,Bebida de arroz Ametller 1l,bebida_vegetal
+begudavegetal_ametller_civada_barista_1l,Bebida de avena barista Ametller 1l,bebida_vegetal
+bebidavegetal_ametller_civada_barista_cerosucres_1l,Bebida de avena barista sin azúcar Ametller 1l,bebida_vegetal
+begudavegetal_ametller_civada_calci_1l,Bebida de avena con calcio Ametller 1l,bebida_vegetal
+begudavegetal_ametller_civada_cerosucre_1l,Bebida de avena sin azúcar Ametller 1l,bebida_vegetal
+begudavegetal_ametller_civada_eco_1l,Bebida de avena ecológica Ametller 1l,bebida_vegetal
+begudavegetal_ametller_civada_matxa_1l,Bebida de avena con matcha Ametller 1l,bebida_vegetal
+bebidavegetal_ametller_orxata_1l,Horchata de chufa Ametller 1l,bebida_vegetal
 bebidavegetal_elements_coco_1l,Leche de coco Elements 1l,bebida_vegetal
-bebidavegetal_yosoy_arroz_avellanas_1l,Bebida de arroz y avellanas Yo Soy 1l,bebida_vegetal
-bebidavegetal_almendrola_almendra_1l,Bebida almendra sin azúcar Almendrola 1l,bebida_vegetal
-yosoy_avena_ecologico_1l,Bebida de avena ecológica Yo Soy 1l,bebida_vegetal
-yosoy_avena_250ml,Bebida de avena Yo Soy 250ml,bebida_vegetal
-yosoy_barista_avena_1l,Bebida de avena barista Yo Soy 1 l,bebida_vegetal
+bebidavegetal_essencials_ametller_civada_1l,Bebida de avena Essencials Ametller 1l,bebida_vegetal
+bebidavegetal_yosoy_almendra_cerozucar_1l,Bebida de almendra sin azúcar Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_avena_1l,Bebida de avena Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_avena_250Ml,Bebida de avena Yo Soy 250ml,bebida_vegetal
+bebidavegetal_yosoy_avena_barista_1l,Bebida de avena barista Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_chocoavena_1l,Bebida de avena con chocolate Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_soja_ceroazucar_1l,Bebida de soja sin azúcar Yo Soy 1l,bebida_vegetal
+bebidavegetal_yosoy_soja_ceroazucar_barista_1l,Bebida de soja sin azúcar barista Yo Soy 1l,bebida_vegetal
+bebidavegetal_cacaolat_cuatrounidades_sinazucar,Cacaolat sin azúcar 4 unidades,bebida_vegetal
+bebidavegetal_cacaolat_original_1l,Cacaolat original 1l,bebida_vegetal
+bebida_vegetal_cacaolat_original_seisunidades,Cacaolat original 6 unidades,bebida_vegetal
+bebidavegetal_cacaolat_sinazucar_1l,Cacaolat sin azúcar 1l,bebida_vegetal
+leche_ametller_llet_entera_1l,Leche entera Llet Ametller 1l,leche
+leche_ametller_llet_semidesnatada_1l,Leche semidesnatada Ametller 1l,leche
+leche_asturiana_barista_1l,Leche entera barista Asturiana 1l,leche
+leche_ato_desnatada_1l,Leche desnatada ATO 1l,leche
+leche_ato_entera_1l,Leche entera ATO 1l,leche
+leche_ato_pequenya_entera_6unidades,Leche entera ATO 6 unidades,leche
 leche_ato_semidesnatada_1l,Leche semidesnatada ATO 1l,leche
+leche_ato_semidesnatada_ecologica_1l,Leche semidesnatada ecológica ATO 1l,leche
+leche_kaiku_sinlactosa_entera_1l,Leche entera sin lactosa Kaiku 1l,leche
+leche_letona_cristal_1l,Leche entera Letona Cristal 1l,leche
+leche_lletnostra_desnatada_1l,Leche desnatada Llet Nostra 1l,leche
+leche_lletnostra_entera_1l,Leche entera Llet Nostra 1l,leche
+leche_lletnostra_semidesnatada_1l,Leche semidesnatada Llet Nostra 1l,leche
+leche_lletnostra_semidesnatada__sinlactosa_1l_001,Leche semidesnatada sin lactosa Llet Nostra 1l,leche
+leche_santagadea_cabra_semidesnatada_ecologica_1l,Leche de cabra semidesnatada ecológica Santa Gadea 1l,leche
+leche_xanceda_semidesnatada_eco_1l,Leche semidesnatada ecológica Xanceda 1l,leche

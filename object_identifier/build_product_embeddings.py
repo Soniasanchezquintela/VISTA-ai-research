@@ -54,6 +54,7 @@ def create_database(metadata_csv: str, db_path: str) -> None:
     for sku_id, description, category in df[["sku_id", "description", "category"]].itertuples(
         index=False, name=None
     ):
+        print(f"[SQL] Inserting product: {sku_id}, {description}, {category}")
         cur.execute(
             """
             INSERT INTO products (sku_id, description, category)

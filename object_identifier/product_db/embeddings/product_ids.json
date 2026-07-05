@@ -6,63 +6,321 @@
     "embedding_index": 0
   },
   {
+    "image_id": "bebidavegetal_almendrola_almendra_sinazucar_barista_1l_001",
+    "sku_id": "bebidavegetal_almendrola_almendra_sinazucar_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_almendrola_almendra_sinazucar_barista_1l_001.jpg",
+    "embedding_index": 1
+  },
+  {
+    "image_id": "bebidavegetal_almendrola_sinazucar_1l_001",
+    "sku_id": "bebidavegetal_almendrola_sinazucar_1l",
+    "image_path": "product_db/images/bebidavegetal_almendrola_sinazucar_1l_001.jpg",
+    "embedding_index": 2
+  },
+  {
+    "image_id": "bebidavegetal_alpro_avena_barista_1l_001",
+    "sku_id": "bebidavegetal_alpro_avena_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_alpro_avena_barista_1l_001.jpg",
+    "embedding_index": 3
+  },
+  {
+    "image_id": "bebidavegetal_ametller_civada_barista_cerosucres_1l_001",
+    "sku_id": "bebidavegetal_ametller_civada_barista_cerosucres_1l",
+    "image_path": "product_db/images/bebidavegetal_ametller_civada_barista_cerosucres_1l_001.jpg",
+    "embedding_index": 4
+  },
+  {
     "image_id": "bebidavegetal_ametller_orxata_1l_001",
     "sku_id": "bebidavegetal_ametller_orxata_1l",
     "image_path": "product_db/images/bebidavegetal_ametller_orxata_1l_001.jpg",
-    "embedding_index": 1
+    "embedding_index": 5
   },
   {
     "image_id": "bebidavegetal_elements_coco_1l_001",
     "sku_id": "bebidavegetal_elements_coco_1l",
     "image_path": "product_db/images/bebidavegetal_elements_coco_1l_001.jpg",
-    "embedding_index": 2
+    "embedding_index": 6
+  },
+  {
+    "image_id": "bebidavegetal_oatly_avena_500ml_001",
+    "sku_id": "bebidavegetal_oatly_avena_500ml",
+    "image_path": "product_db/images/bebidavegetal_oatly_avena_500ml_001.jpg",
+    "embedding_index": 7
+  },
+  {
+    "image_id": "bebidavegetal_oatly_avena_barista_1l_001",
+    "sku_id": "bebidavegetal_oatly_avena_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_oatly_avena_barista_1l_001.jpg",
+    "embedding_index": 8
+  },
+  {
+    "image_id": "bebidavegetal_oatly_avena_nosugar_1l_001",
+    "sku_id": "bebidavegetal_oatly_avena_nosugar_1l",
+    "image_path": "product_db/images/bebidavegetal_oatly_avena_nosugar_1l_001.jpg",
+    "embedding_index": 9
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_almendra_cerozucar_1l_001",
+    "sku_id": "bebidavegetal_yosoy_almendra_cerozucar_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_almendra_cerozucar_1l_001.jpg",
+    "embedding_index": 10
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_almendra_nueces_1l_001",
+    "sku_id": "bebidavegetal_yosoy_almendra_nueces_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_almendra_nueces_1l_001.jpg",
+    "embedding_index": 11
   },
   {
     "image_id": "bebidavegetal_yosoy_arroz_avellanas_1l_001",
     "sku_id": "bebidavegetal_yosoy_arroz_avellanas_1l",
     "image_path": "product_db/images/bebidavegetal_yosoy_arroz_avellanas_1l_001.jpg",
-    "embedding_index": 3
+    "embedding_index": 12
   },
   {
     "image_id": "bebidavegetal_yosoy_arroz_coco_1l_001",
     "sku_id": "bebidavegetal_yosoy_arroz_coco_1l",
     "image_path": "product_db/images/bebidavegetal_yosoy_arroz_coco_1l_001.jpg",
-    "embedding_index": 4
+    "embedding_index": 13
   },
   {
-    "image_id": "yosoy_avena_250ml_001",
-    "sku_id": "yosoy_avena_250ml",
-    "image_path": "product_db/images/yosoy_avena_250ml_001.jpg",
-    "embedding_index": 5
+    "image_id": "bebidavegetal_yosoy_avena_1l_001",
+    "sku_id": "bebidavegetal_yosoy_avena_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_1l_001.jpg",
+    "embedding_index": 14
   },
   {
-    "image_id": "yosoy_avena_ecologico_1l_001",
-    "sku_id": "yosoy_avena_ecologico_1l",
-    "image_path": "product_db/images/yosoy_avena_ecologico_1l_001.jpg",
-    "embedding_index": 6
+    "image_id": "bebidavegetal_yosoy_avena_250Ml_001",
+    "sku_id": "bebidavegetal_yosoy_avena_250Ml",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_250Ml_001.jpg",
+    "embedding_index": 15
   },
   {
-    "image_id": "yosoy_barista_avena_1l_001",
-    "sku_id": "yosoy_barista_avena_1l",
-    "image_path": "product_db/images/yosoy_barista_avena_1l_001.jpg",
-    "embedding_index": 7
+    "image_id": "bebidavegetal_yosoy_avena_barista_1l_001",
+    "sku_id": "bebidavegetal_yosoy_avena_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_barista_1l_001.jpg",
+    "embedding_index": 16
   },
   {
-    "image_id": "yosoy_barista_avena_1l_002",
-    "sku_id": "yosoy_barista_avena_1l",
-    "image_path": "product_db/images/yosoy_barista_avena_1l_002.jpg",
-    "embedding_index": 8
+    "image_id": "bebidavegetal_yosoy_avena_barista_1l_002",
+    "sku_id": "bebidavegetal_yosoy_avena_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_barista_1l_002.jpg",
+    "embedding_index": 17
   },
   {
-    "image_id": "yosoy_barista_avena_1l_003",
-    "sku_id": "yosoy_barista_avena_1l",
-    "image_path": "product_db/images/yosoy_barista_avena_1l_003.jpg",
-    "embedding_index": 9
+    "image_id": "bebidavegetal_yosoy_avena_barista_1l_003",
+    "sku_id": "bebidavegetal_yosoy_avena_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_barista_1l_003.jpg",
+    "embedding_index": 18
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_avena_calcio_1l_001",
+    "sku_id": "bebidavegetal_yosoy_avena_calcio_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_calcio_1l_001.jpg",
+    "embedding_index": 19
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_avena_ecologico_1l_001",
+    "sku_id": "bebidavegetal_yosoy_avena_ecologico_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_avena_ecologico_1l_001.jpg",
+    "embedding_index": 20
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_chocoavena_1l_001",
+    "sku_id": "bebidavegetal_yosoy_chocoavena_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_chocoavena_1l_001.jpg",
+    "embedding_index": 21
+  },
+  {
+    "image_id": "begudavegetal_ametller_ametlla_cerosucre_calci_1l_001",
+    "sku_id": "begudavegetal_ametller_ametlla_cerosucre_calci_1l",
+    "image_path": "product_db/images/begudavegetal_ametller_ametlla_cerosucre_calci_1l_001.jpg",
+    "embedding_index": 22
+  },
+  {
+    "image_id": "begudavegetal_ametller_ametlla_cerosucre_calci_6l_001",
+    "sku_id": "begudavegetal_ametller_ametlla_cerosucre_calci_6l",
+    "image_path": "product_db/images/begudavegetal_ametller_ametlla_cerosucre_calci_6l_001.jpg",
+    "embedding_index": 23
+  },
+  {
+    "image_id": "begudavegetal_ametller_civada_barista_1l_001",
+    "sku_id": "begudavegetal_ametller_civada_barista_1l",
+    "image_path": "product_db/images/begudavegetal_ametller_civada_barista_1l_001.jpg",
+    "embedding_index": 24
+  },
+  {
+    "image_id": "begudavegetal_ametller_civada_cerosucre_1l_001",
+    "sku_id": "begudavegetal_ametller_civada_cerosucre_1l",
+    "image_path": "product_db/images/begudavegetal_ametller_civada_cerosucre_1l_001.jpg",
+    "embedding_index": 25
+  },
+  {
+    "image_id": "begudavegetal_ametller_civada_matxa_1l_001",
+    "sku_id": "begudavegetal_ametller_civada_matxa_1l",
+    "image_path": "product_db/images/begudavegetal_ametller_civada_matxa_1l_001.jpg",
+    "embedding_index": 26
+  },
+  {
+    "image_id": "leche_asturiana_barista_1l_001",
+    "sku_id": "leche_asturiana_barista_1l",
+    "image_path": "product_db/images/leche_asturiana_barista_1l_001.jpg",
+    "embedding_index": 27
+  },
+  {
+    "image_id": "leche_ato_desnatada_1l_001",
+    "sku_id": "leche_ato_desnatada_1l",
+    "image_path": "product_db/images/leche_ato_desnatada_1l_001.jpg",
+    "embedding_index": 28
+  },
+  {
+    "image_id": "leche_ato_entera_1l_001",
+    "sku_id": "leche_ato_entera_1l",
+    "image_path": "product_db/images/leche_ato_entera_1l_001.jpg",
+    "embedding_index": 29
   },
   {
     "image_id": "leche_ato_semidesnatada_1l_001",
     "sku_id": "leche_ato_semidesnatada_1l",
-    "image_path": "product_db/images/leche_ato_semidesnatada_1l_001.png",
-    "embedding_index": 10
+    "image_path": "product_db/images/leche_ato_semidesnatada_1l_001.jpg",
+    "embedding_index": 30
+  },
+  {
+    "image_id": "leche_ato_semidesnatada_ecologica_1l_001",
+    "sku_id": "leche_ato_semidesnatada_ecologica_1l",
+    "image_path": "product_db/images/leche_ato_semidesnatada_ecologica_1l_001.jpg",
+    "embedding_index": 31
+  },
+  {
+    "image_id": "leche_kaiku_sinlactosa_entera_1l_001",
+    "sku_id": "leche_kaiku_sinlactosa_entera_1l",
+    "image_path": "product_db/images/leche_kaiku_sinlactosa_entera_1l_001.jpg",
+    "embedding_index": 32
+  },
+  {
+    "image_id": "leche_lletnostra_desnatada_1l_001",
+    "sku_id": "leche_lletnostra_desnatada_1l",
+    "image_path": "product_db/images/leche_lletnostra_desnatada_1l_001.jpg",
+    "embedding_index": 33
+  },
+  {
+    "image_id": "leche_lletnostra_entera_1l_001",
+    "sku_id": "leche_lletnostra_entera_1l",
+    "image_path": "product_db/images/leche_lletnostra_entera_1l_001.jpg",
+    "embedding_index": 34
+  },
+  {
+    "image_id": "leche_lletnostra_semidesnatada_1l_001",
+    "sku_id": "leche_lletnostra_semidesnatada_1l",
+    "image_path": "product_db/images/leche_lletnostra_semidesnatada_1l_001.jpg",
+    "embedding_index": 35
+  },
+  {
+    "image_id": "leche_lletnostra_semidesnatada__sinlactosa_1l_001",
+    "sku_id": "leche_lletnostra_semidesnatada__sinlactosa_1l",
+    "image_path": "product_db/images/leche_lletnostra_semidesnatada__sinlactosa_1l_001.jpg",
+    "embedding_index": 36
+  },
+  {
+    "image_id": "leche_santagadea_cabra_semidesnatada_ecologica_1l_001",
+    "sku_id": "leche_santagadea_cabra_semidesnatada_ecologica_1l",
+    "image_path": "product_db/images/leche_santagadea_cabra_semidesnatada_ecologica_1l_001.jpg",
+    "embedding_index": 37
+  },
+  {
+    "image_id": "leche_xanceda_semidesnatada_eco_1l_001",
+    "sku_id": "leche_xanceda_semidesnatada_eco_1l",
+    "image_path": "product_db/images/leche_xanceda_semidesnatada_eco_1l_001.jpg",
+    "embedding_index": 38
+  },
+  {
+    "image_id": "bebida_vegetal_cacaolat_original_seisunidades_001",
+    "sku_id": "bebida_vegetal_cacaolat_original_seisunidades",
+    "image_path": "product_db/images/bebida_vegetal_cacaolat_original_seisunidades_001.png",
+    "embedding_index": 39
+  },
+  {
+    "image_id": "bebidavegetal_ametller_ametlla_cerosucre_barista_1l_001",
+    "sku_id": "bebidavegetal_ametller_ametlla_cerosucre_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_ametller_ametlla_cerosucre_barista_1l_001.png",
+    "embedding_index": 40
+  },
+  {
+    "image_id": "bebidavegetal_ametller_arros_1l_001",
+    "sku_id": "bebidavegetal_ametller_arros_1l",
+    "image_path": "product_db/images/bebidavegetal_ametller_arros_1l_001.png",
+    "embedding_index": 41
+  },
+  {
+    "image_id": "bebidavegetal_cacaolat_cuatrounidades_sinazucar_001",
+    "sku_id": "bebidavegetal_cacaolat_cuatrounidades_sinazucar",
+    "image_path": "product_db/images/bebidavegetal_cacaolat_cuatrounidades_sinazucar_001.png",
+    "embedding_index": 42
+  },
+  {
+    "image_id": "bebidavegetal_cacaolat_original_1l_001",
+    "sku_id": "bebidavegetal_cacaolat_original_1l",
+    "image_path": "product_db/images/bebidavegetal_cacaolat_original_1l_001.png",
+    "embedding_index": 43
+  },
+  {
+    "image_id": "bebidavegetal_cacaolat_sinazucar_1l_001",
+    "sku_id": "bebidavegetal_cacaolat_sinazucar_1l",
+    "image_path": "product_db/images/bebidavegetal_cacaolat_sinazucar_1l_001.png",
+    "embedding_index": 44
+  },
+  {
+    "image_id": "bebidavegetal_essencials_ametller_civada_1l_001",
+    "sku_id": "bebidavegetal_essencials_ametller_civada_1l",
+    "image_path": "product_db/images/bebidavegetal_essencials_ametller_civada_1l_001.png",
+    "embedding_index": 45
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_soja_ceroazucar_1l_001",
+    "sku_id": "bebidavegetal_yosoy_soja_ceroazucar_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_soja_ceroazucar_1l_001.png",
+    "embedding_index": 46
+  },
+  {
+    "image_id": "bebidavegetal_yosoy_soja_ceroazucar_barista_1l_001",
+    "sku_id": "bebidavegetal_yosoy_soja_ceroazucar_barista_1l",
+    "image_path": "product_db/images/bebidavegetal_yosoy_soja_ceroazucar_barista_1l_001.png",
+    "embedding_index": 47
+  },
+  {
+    "image_id": "begudavegetal_ametller_civada_calci_1l_001",
+    "sku_id": "begudavegetal_ametller_civada_calci_1l",
+    "image_path": "product_db/images/begudavegetal_ametller_civada_calci_1l_001.png",
+    "embedding_index": 48
+  },
+  {
+    "image_id": "begudavegetal_ametller_civada_eco_1l_001",
+    "sku_id": "begudavegetal_ametller_civada_eco_1l",
+    "image_path": "product_db/images/begudavegetal_ametller_civada_eco_1l_001.png",
+    "embedding_index": 49
+  },
+  {
+    "image_id": "leche_ametller_llet_entera_1l_001",
+    "sku_id": "leche_ametller_llet_entera_1l",
+    "image_path": "product_db/images/leche_ametller_llet_entera_1l_001.png",
+    "embedding_index": 50
+  },
+  {
+    "image_id": "leche_ametller_llet_semidesnatada_1l_001",
+    "sku_id": "leche_ametller_llet_semidesnatada_1l",
+    "image_path": "product_db/images/leche_ametller_llet_semidesnatada_1l_001.png",
+    "embedding_index": 51
+  },
+  {
+    "image_id": "leche_ato_pequenya_entera_6unidades_001",
+    "sku_id": "leche_ato_pequenya_entera_6unidades",
+    "image_path": "product_db/images/leche_ato_pequenya_entera_6unidades_001.png",
+    "embedding_index": 52
+  },
+  {
+    "image_id": "leche_letona_cristal_1l_001",
+    "sku_id": "leche_letona_cristal_1l",
+    "image_path": "product_db/images/leche_letona_cristal_1l_001.png",
+    "embedding_index": 53
   }
 ]

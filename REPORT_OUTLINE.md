@@ -43,18 +43,33 @@ product they are pointing at — spoken back in their language.
 <img src="images/Global Architecture Overview.png" width="700" alt="YOLO training and validation curves">
 
 
+We integrated different models to address all the needs of the user. 
+1)The product detector is working constantly in accordance with the CLIP model in order to identify bounding boxes and assign them to products.
+2)As soon as the user wants to interact with the system they use the voice input paired with the intent classifier in order to request a specific function from the system (describe scene, identify pointed product).
+3)The request goes to the scene memory module which keeps track of bounding box identities across frames and accounts for head movement or bounding box occlusion due to pointing hand obstruction.
+5)The coordinates from the YOLO output are fed into Gemma which is then abole to group them in shelves based on their position.
+4)The scene description module then delivers a user-friendly response according to the user request.
+
 | Component | Module | Trained by us? | Status |
 |---|---|---|---|
-| Product detection | `object_detector/` | ✅ Yes (fine-tuned YOLO) | [ ] |
-| Product identification | `object_identifier/` | ❌ No (frozen CLIP, zero-shot) | [ ] |
-| Hand & pointing | `hand_detector.py` | ❌ No (pretrained MediaPipe) | [ ] |
-| Scene memory / tracking | `scene_memory/` | ❌ No (classical algorithm) | [ ] |
-| Voice → intent | `voice/`, `intent_classifier/` | ✅ Yes (fine-tuned DistilBERT) | [ ] |
-| Description | `scene_memory/`, [LLM] | ❌ No (prompt-based) | [ ] |
+| Product detection | `object_detector/` | ✅ Yes (fine-tuned YOLO) | [Done] |
+| Product identification | `object_identifier/` | ❌ No (frozen CLIP, zero-shot) | [Done] |
+| Hand & pointing | `hand_detector.py` | ❌ No (pretrained MediaPipe) | [Done] |
+| Scene memory / tracking | `scene_memory/` | ❌ No (classical algorithm) | [Done] |
+| Voice → intent | `voice/`, `intent_classifier/` | ✅ Yes (fine-tuned DistilBERT) | [Done] |
+| Description | `scene_memory/`, [LLM] | ❌ No (prompt-based) | [Done] |
 
 ---
 
-## 2. How to run the code
+## 2. Dataset
+
+### We used 3 datasets, one for each purpose
+
+1. SKU-110k (stock keeping unit): Dataset for object detection in densely packed scenes such as supermarket shelves. We only detect (an) object (no name, no brand, no category). This was used to fine-tune the YOLO model (not labelled with products names).
+2. Web-scrapped dataset from Ametller online shop: This was used in order to obtain product images from Ametller with labels.
+3. Took photos from Ametller, created bounding boxes and labelled the products in the bounding boxes in order to evaluate the performance of our project. 
+
+## 3. How to run the code
 
 ### Requirements
 - Python **3.10+** (the codebase uses `X | None` type syntax at runtime).
@@ -79,6 +94,16 @@ pip install -r requirements.txt
 ```bash
 python project.py --image path/to/shelf.jpg   # single image
 python project.py --webcam 0                   # live; type `listen` for a voice command
+
+Case 1 - Image input:
+vista> ?describe_pointed_product
+Describe the product that is currently being pointed at.
+vista> ?describe_scene
+Describe the current scene.
+vista> ?process_image
+process_image <image_path>
+vista> ?process_video
+process_video <video_path>
 ```
 
 ### Tests
@@ -91,8 +116,6 @@ python test_scene_memory.py
 ## 3. Experiments
 
 > Each subsection: **Hypothesis → Setup → Results → Conclusions.**
-> Note which are *training* experiments (YOLO, intent classifier) vs *evaluation /
-> tuning / integration* experiments (CLIP, MediaPipe, scene memory, description).
 
 ---
 

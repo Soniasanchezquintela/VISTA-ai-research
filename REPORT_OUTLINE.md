@@ -139,7 +139,7 @@ relative to the frame.
   sign of overfitting. Precision (~0.92), recall (~0.88), mAP@0.5 (~0.92) and
   mAP@0.5:0.95 (~0.58) all rise and plateau over ~45 epochs.
 
-  <img src="images/exp1_training_curves.png" width="700" alt="YOLO training and validation curves">
+  <img src="images/Yolo-results.png" width="700" alt="YOLO training and validation curves">
 
   *Figure 1 — YOLO11 training/validation losses and detection metrics over epochs.*
 - [PLACEHOLDER — 2–3 annotated sample images on our own photos.]

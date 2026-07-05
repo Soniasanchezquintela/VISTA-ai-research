@@ -96,14 +96,13 @@ python project.py --image path/to/shelf.jpg   # single image
 python project.py --webcam 0                   # live; type `listen` for a voice command
 
 Case 1 - Image input:
-vista> ?describe_pointed_product
-Describe the product that is currently being pointed at.
-vista> ?describe_scene
-Describe the current scene.
-vista> ?process_image
+process_image
 process_image <image_path>
-vista> ?process_video
-process_video <video_path>
+describe_scene
+Describe the current scene.
+
+Case 2 - Video input:
+
 ```
 
 ### Tests

@@ -40,7 +40,7 @@ product they are pointing at — spoken back in their language.
 **Scope of this report.** This report presents the structure of our project, how we built each module, and the results of the experiments we conducted.
 
 ### System architecture
-
+<img src="images/Screenshot 2026-07-05 at 17.45.04.png" width="700" alt="YOLO training and validation curves">
 ```
 Voice (wake word → speech-to-text → intent)
         │

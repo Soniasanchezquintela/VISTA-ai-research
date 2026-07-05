@@ -208,13 +208,105 @@ def compute_detector_metrics(
         "false_negatives": false_negatives,
     }
 
+def _identification_sku_id(identification) -> str | None:
+    if isinstance(identification, dict):
+        return identification.get("sku_id")
+    return identification.sku_id
+
+
+def _identification_accepted(identification) -> bool:
+    if isinstance(identification, dict):
+        return bool(identification.get("accepted", False))
+    return bool(identification.accepted)
+
+
+def _ground_truth_label(box: dict, ground_truth: dict) -> str:
+    class_index = int(box["class"])
+    return ground_truth["classes"][class_index]["name"]
+
+
+def compute_identification_metrics(
+    identifications: list,
+    ground_truth: dict,
+    iou_threshold: float = 0.5,
+) -> dict:
+    """
+    Compute product-identification metrics from identified boxes and labels.
+
+    A matched identification is a true positive only when:
+    - its bbox matches a ground-truth bbox with IoU >= iou_threshold,
+    - identification.accepted is True,
+    - identification.sku_id equals the ground-truth class name.
+
+    Rejected identifications, wrong accepted SKU IDs, and unmatched
+    identifications count as false positives. Ground-truth boxes without a
+    correct accepted identification count as false negatives.
+    """
+    identified_boxes = [_detection_bbox(identification) for identification in identifications]
+    labeled_boxes = [_ground_truth_bbox(box) for box in ground_truth.get("boxes", [])]
+
+    candidate_matches = []
+    for identification_index, identified_box in enumerate(identified_boxes):
+        for label_index, labeled_box in enumerate(labeled_boxes):
+            iou = _bbox_iou(identified_box, labeled_box)
+            if iou >= iou_threshold:
+                candidate_matches.append((iou, identification_index, label_index))
+
+    candidate_matches.sort(reverse=True)
+
+    matched_identifications = set()
+    matched_labels = set()
+    matches = []
+
+    for iou, identification_index, label_index in candidate_matches:
+        if identification_index in matched_identifications or label_index in matched_labels:
+            continue
+
+        matched_identifications.add(identification_index)
+        matched_labels.add(label_index)
+        matches.append((identification_index, label_index, iou))
+
+    true_positives = 0
+    false_positives = len(identifications) - len(matched_identifications)
+    false_negatives = len(labeled_boxes) - len(matched_labels)
+    rejected_detections = 0
+    wrong_identifications = 0
+
+    for identification_index, label_index, _iou in matches:
+        identification = identifications[identification_index]
+        expected_label = _ground_truth_label(ground_truth["boxes"][label_index], ground_truth)
+
+        if not _identification_accepted(identification):
+            rejected_detections += 1
+            false_positives += 1
+            false_negatives += 1
+            continue
+
+        detected_label = _identification_sku_id(identification)
+        if detected_label == expected_label:
+            true_positives += 1
+        else:
+            wrong_identifications += 1
+            false_positives += 1
+            false_negatives += 1
+
+    return {
+        "true_positives": true_positives,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+        "rejected_detections": rejected_detections,
+        "wrong_identifications": wrong_identifications,
+        "matched_identifications": len(matched_identifications),
+        "matched_labels": len(matched_labels),
+    }
+
 def main():
 
     args = parse_args()
 
     dataset_path = Path(args.dataset)
 
-    check_missing_sku=False
+    check_missing_sku=True
 
     if not sanity_check(dataset_path, check_missing_sku=check_missing_sku):
         return
@@ -230,6 +322,13 @@ def main():
     total_true_positives = 0
     total_false_positives = 0
     total_false_negatives = 0
+    total_identification_true_positives = 0
+    total_identification_false_positives = 0
+    total_identification_false_negatives = 0
+    total_identification_rejected_detections = 0
+    total_identification_wrong_identifications = 0
+    total_identification_matched_identifications = 0
+    total_identification_matched_labels = 0
     images_processed = 0
    
     # Loop through all images in the dataset directory
@@ -261,9 +360,21 @@ def main():
         # Compare these boxes with the detected boxes
         metrics = compute_detector_metrics(detections, data, iou_threshold=0.5)
 
+        identification_metrics = {}
+        if check_missing_sku:
+            identification_metrics = compute_identification_metrics(identifications, data)
+
         total_true_positives += metrics["true_positives"]
         total_false_positives += metrics["false_positives"]
         total_false_negatives += metrics["false_negatives"]
+        if identification_metrics:
+            total_identification_true_positives += identification_metrics["true_positives"]
+            total_identification_false_positives += identification_metrics["false_positives"]
+            total_identification_false_negatives += identification_metrics["false_negatives"]
+            total_identification_rejected_detections += identification_metrics["rejected_detections"]
+            total_identification_wrong_identifications += identification_metrics["wrong_identifications"]
+            total_identification_matched_identifications += identification_metrics["matched_identifications"]
+            total_identification_matched_labels += identification_metrics["matched_labels"]
         images_processed += 1
 
     precision = (
@@ -290,6 +401,40 @@ def main():
     print(f"Precision: {precision:.4f}")
     print(f"Recall: {recall:.4f}")
     print(f"F1 score: {f1_score:.4f}")
+
+    if check_missing_sku:
+        identification_precision = (
+            total_identification_true_positives
+            / (total_identification_true_positives + total_identification_false_positives)
+            if total_identification_true_positives + total_identification_false_positives > 0
+            else 0.0
+        )
+        identification_recall = (
+            total_identification_true_positives
+            / (total_identification_true_positives + total_identification_false_negatives)
+            if total_identification_true_positives + total_identification_false_negatives > 0
+            else 0.0
+        )
+        identification_f1_score = (
+            2 * identification_precision * identification_recall
+            / (identification_precision + identification_recall)
+            if identification_precision + identification_recall > 0.0
+            else 0.0
+        )
+
+        print()
+        print("Identification metrics for full dataset:")
+        print("Images processed:", images_processed)
+        print("True positives:", total_identification_true_positives)
+        print("False positives:", total_identification_false_positives)
+        print("False negatives:", total_identification_false_negatives)
+        print("Rejected detections:", total_identification_rejected_detections)
+        print("Wrong identifications:", total_identification_wrong_identifications)
+        print("Matched identifications:", total_identification_matched_identifications)
+        print("Matched labels:", total_identification_matched_labels)
+        print(f"Precision: {identification_precision:.4f}")
+        print(f"Recall: {identification_recall:.4f}")
+        print(f"F1 score: {identification_f1_score:.4f}")
 
 
     # detections, hand_detection, identifications = execute_pipeline(frame, detector, hand_detector, object_identifier)

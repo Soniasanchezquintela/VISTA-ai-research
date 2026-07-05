@@ -96,23 +96,20 @@ python project.py --image path/to/shelf.jpg   # single image
 python project.py --webcam 0                   # live; type `listen` for a voice command
 
 Case 1 - Image input:
-process_image
-process_image <image_path>
-describe_scene
-Describe the current scene.
+process_image - process_image <image_path>
+describe_scene - Describe the current scene
 
 Case 2 - Video input:
-
-```
-
-### Tests
-```bash
-python test_scene_memory.py
+listen - activates the module that listens for the users voice command
+describe_scene - describes the products present in the scene
+describe_pointed_product - gives the name of the pointed product
 ```
 
 ---
 
-## 3. Experiments
+## 4. Experiments
+
+These are different experiments that we ran in order to find the optimal configuration of our system and which modules work best.
 
 > Each subsection: **Hypothesis → Setup → Results → Conclusions.**
 
@@ -122,12 +119,8 @@ python test_scene_memory.py
 *Type: neural-network training experiment.*
 
 **Hypothesis**
-A general-purpose - out of the box - YOLO model will not, out of the box, reliably localize the
-small, densely packed, repeated products found on supermarket shelves. We expect
-that fine-tuning YOLO11 on SKU110K (a dataset built specifically for dense retail
-shelves) will substantially improve detection recall on our own shelf photos,
-and that a larger input resolution will help most because the products are small
-relative to the frame.
+We expect that fine-tuning YOLO11 on SKU110K (a dataset built specifically for dense retail
+shelves) will allow for accurate object detection in a supermarket setting with a mAP@0.5 > 80%. This is only used for drawing bounding boxes around products, not classifying them.
 
 **Experiment setup**
 - **Base model:** `yolo11m.pt` (Ultralytics YOLO11-medium).
@@ -155,13 +148,9 @@ relative to the frame.
   <img src="images/Yolo-results.png" width="700" alt="YOLO training and validation curves">
 
   *Figure 1 — YOLO11 training/validation losses and detection metrics over epochs.*
-- [PLACEHOLDER — 2–3 annotated sample images on our own photos.]
-- [PLACEHOLDER — 640 vs 768 comparison if run.]
 
 **Conclusions**
-[What the numbers show: did fine-tuning + higher resolution help? Failure modes —
-tiny products, occlusion, glare, top/bottom shelf rows. Did early stopping trigger
-before 50 epochs (overfitting risk on a single class)? New hypotheses for next round.]
+[The hypothesis was validated and the fine-tuned model was used in the project.]
 
 ---
 
@@ -410,7 +399,7 @@ real user would actually need. New hypotheses.]
 
 ---
 
-## ❇️ 4. Overall conclusions & future work
+## ❇️ 5. Overall conclusions & future work
 
 [Synthesize across experiments: what works end-to-end today, the weakest link
 (e.g. the 10-SKU catalog limiting identification), most promising next steps,
@@ -430,7 +419,7 @@ of sub-contexts within the supermarket (e.g., product type, disposition, light, 
 
 ---
 
-## 5. References
+## 6. References
 
 [Format consistently — e.g. numbered or author-year. Pull the related papers from
 `papers.md`. Suggested entries:]

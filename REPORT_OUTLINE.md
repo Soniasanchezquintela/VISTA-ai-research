@@ -180,6 +180,18 @@ single raw frame. It combines four mechanisms:
   kept as a greyed "lost" box for ~**90 frames (~3 s)** and revived with its original
   ID if it reappears.
 
+*Why it matters (vs. no tracking):* the original per-frame approach
+(`ShelfSceneMemory`) resets every frame — boxes flicker, IDs change constantly, and
+pointing is impossible (`get_touched_object()` always returns `None`). Our
+`TrackedShelfSceneMemory` is a drop-in replacement (same interface) that fixes all of
+this. It is validated by unit tests (`test_scene_memory.py`: ID stability,
+occlusion survival/removal, pointing resolution, voting, bbox smoothing) and by
+qualitative webcam runs (stable IDs, grey box reviving after a hand passes, no
+ghost-box swarm on head turns).
+
+*Demonstration:* [PLACEHOLDER — screenshot of a product keeping its ID while briefly
+covered (grey "lost" box → revived), and green boxes once CLIP recognizes a product.]
+
 ### 4.3 User interaction — voice & intent (`voice_to_text.py`, `intent_classifier/`)
 
 This layer is **activated by the user** and is what tells the system *what to do* with
@@ -344,54 +356,7 @@ needs fine-tuning / more reference images per SKU. New hypotheses.]
 
 ---
 
-### Experiment 3 — Persistent scene memory vs per-frame detection (tracking)
-*Type: algorithmic / ablation experiment (no NN).*
-
-**Hypothesis**
-A per-frame pipeline that re-detects and re-identifies from scratch each frame
-will produce unstable output (flickering boxes, changing IDs) and cannot support
-pointing, because nothing persists between frames. We expect that adding a
-tracking layer — matching boxes across frames, remembering them briefly when
-occluded, and voting on their identity over time — will give stable identities,
-survive a hand passing over a product, stay stable when the camera pans, and make
-pointing usable.
-
-**Experiment setup**
-- **Baseline:** original `ShelfSceneMemory` — resets every frame;
-  `get_touched_object()` returns `None` (pointing impossible).
-- **Ours:** `TrackedShelfSceneMemory`. The public interface is unchanged, so it
-  is a drop-in replacement. It combines three mechanisms (detailed below):
-  IoU matching, product voting, and global-motion compensation.
-- **Evaluation:** unit tests (`test_scene_memory.py`: ID stability,
-  new-vs-existing, occlusion survival/removal, pointing hit/miss, voting,
-  promotion, bbox smoothing) + qualitative webcam runs comparing baseline vs ours.
-
-*(The mechanisms — IoU matching, product voting, motion compensation, and occlusion
-persistence — are explained in Section 4.2.)*
-
-**Results**
-- Unit tests: [PLACEHOLDER — "N/N passing"] covering ID stability, occlusion
-  survival, pointing resolution, voting, and bbox smoothing.
-- [PLACEHOLDER — before/after webcam: box-flicker / ID-switch count over a fixed
-  clip; box survival time under hand occlusion.]
-- [PLACEHOLDER — head-turn comparison: ghost-box count with vs without motion
-  compensation.]
-- [PLACEHOLDER — screenshot of a product keeping its ID while briefly covered
-  (grey "lost" box → revived), and green boxes when CLIP recognizes a product.]
-
-**Conclusions**
-Tracking is what makes pointing function at all (the baseline always returns
-`None`). IoU matching + 90-frame persistence give stable IDs and survive brief
-occlusion; voting stabilises the identity label; motion compensation removes the
-ghost-box artefact on head turns. Remaining failure modes: very fast *independent*
-motion of a single product (an *ID switch* — the box is treated as old-gone +
-new-arrived, losing its vote history), and large rotation/zoom (not captured by
-translation-only compensation). Future work: motion prediction (Kalman/SORT-style)
-or appearance-based re-linking to survive these cases.
-
----
-
-### Experiment 4 — Voice command understanding (Whisper STT + intent classifier)
+### Experiment 3 — Voice command understanding (Whisper STT + intent classifier)
 *Type: neural-network training experiment (the intent classifier is fine-tuned).*
 
 **Hypothesis**

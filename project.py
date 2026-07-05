@@ -700,6 +700,19 @@ class CommandInterpreter(cmd.Cmd):
         if self._run_on_main_thread("stop_webcam"):
             print("Webcam stopped.")
 
+    def do_clear(self, arg: str) -> None:
+        """clear -- clear the terminal screen."""
+        if arg.strip():
+            print("Usage: clear")
+            return
+
+        sys.stdout.write("\033[2J\033[3J\033[H")
+        sys.stdout.flush()
+
+    def do_reset(self, arg: str) -> None:
+        """reset -- clear the terminal screen."""
+        self.do_clear(arg)
+
     def do_exit(self, arg: str) -> bool:
         """exit"""
         self._run_on_main_thread("exit", wait=False)
@@ -731,8 +744,9 @@ class CommandInterpreter(cmd.Cmd):
 
     def do_listen(self, arg: str) -> None:
         """listen -- start listening for voice commands."""
-        print("Listening for voice commands for 5 seconds...")
-        detected_text, language = voice_processor.process_voice_command()
+        duration = 2.0
+        print(f"Listening for voice commands for {duration} seconds...")
+        detected_text, language = voice_processor.process_voice_command(duration_s=duration)
         print(f"Detected voice command: {detected_text}")
 
         intent, target, confidence = intent_classifier.classify(detected_text)
@@ -907,6 +921,7 @@ def main():
             name="command-interpreter",
         )
         command_thread.start()
+        interpreter.speak("Bienvenido a Vista.")
         run_main_thread_command_loop(main_command_queue)
         command_thread.join()
         exit(0)

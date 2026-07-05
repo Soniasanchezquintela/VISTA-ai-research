@@ -11,17 +11,19 @@
 > 🔗 **Repository:** https://github.com/Soniasanchezquintela/VISTA-ai-research
 > (Link also available in the PPT presentation).
 > 
-[1–3 sentence elevator pitch: who it's for, what problem it solves, what it does.]
+“Accessibility if not about convenience, 
+It is about dignity”. Improving the shopping experience for visually impaired people.
 
-**Team & roles:** [name — component], [name — component], [name — component], [name — component]
+**Team Members:** Ramon Viedma, Sonia Sánchez, Nuria Olvera, Petros Zonias
+**Advisor:** Amanda Duarte
 
 ---
 
 ## 1. Overview
 
-**Social Motivation/Impact.** [For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
+**Social Motivation/Impact.** For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
 blind or visually impaired person, finding a product on a shelf can require depending on someone else being available
-to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like teh visually impaired]
+to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like teh visually impaired.
 
 **Goal.** VISTA is a prototype assistive system that uses a single camera and the
 user's voice to (a) describe the products on a shelf, and (b) tell the user what
@@ -35,35 +37,39 @@ product they are pointing at — spoken back in their language.
    and resolves which one the finger is pointing at.
 4. It speaks back a concise, useful answer.
 
-**Scope of this report.** [State what is fully working, what is a prototype, and
-what is out of scope — e.g. real-time wearable hardware, full store navigation.]
+**Scope of this report.** This report presents the structure of our project, how we built each module, and the results of the experiments we conducted.
 
 ### System architecture
+<img src="images/Global Architecture Overview.png" width="700" alt="YOLO training and validation curves">
 
-```
-Voice (wake word → speech-to-text → intent)
-        │
-        ▼
-Camera frame ──► Product detection (YOLO) ──► Product identification (CLIP)
-        │                                              │
-        └──► Hand / pointing detection (MediaPipe) ──► Scene memory (tracking)
-                                                       │
-                                                       ▼
-                                          Spoken response (scene / pointed product)
-```
+
+We integrated different models to address all the needs of the user. 
+1)The product detector is working constantly in accordance with the CLIP model in order to identify bounding boxes and assign them to products.
+2)As soon as the user wants to interact with the system they use the voice input paired with the intent classifier in order to request a specific function from the system (describe scene, identify pointed product).
+3)The request goes to the scene memory module which keeps track of bounding box identities across frames and accounts for head movement or bounding box occlusion due to pointing hand obstruction.
+5)The coordinates from the YOLO output are fed into Gemma which is then abole to group them in shelves based on their position.
+4)The scene description module then delivers a user-friendly response according to the user request.
 
 | Component | Module | Trained by us? | Status |
 |---|---|---|---|
-| Product detection | `object_detector/` | ✅ Yes (fine-tuned YOLO) | [ ] |
-| Product identification | `object_identifier/` | ❌ No (frozen CLIP, zero-shot) | [ ] |
-| Hand & pointing | `hand_detector.py` | ❌ No (pretrained MediaPipe) | [ ] |
-| Scene memory / tracking | `scene_memory/` | ❌ No (classical algorithm) | [ ] |
-| Voice → intent | `voice/`, `intent_classifier/` | ✅ Yes (fine-tuned DistilBERT) | [ ] |
-| Description | `scene_memory/`, [LLM] | ❌ No (prompt-based) | [ ] |
+| Product detection | `object_detector/` | ✅ Yes (fine-tuned YOLO) | [Done] |
+| Product identification | `object_identifier/` | ❌ No (frozen CLIP, zero-shot) | [Done] |
+| Hand & pointing | `hand_detector.py` | ❌ No (pretrained MediaPipe) | [Done] |
+| Scene memory / tracking | `scene_memory/` | ❌ No (classical algorithm) | [Done] |
+| Voice → intent | `voice/`, `intent_classifier/` | ✅ Yes (fine-tuned DistilBERT) | [Done] |
+| Description | `scene_memory/`, [LLM] | ❌ No (prompt-based) | [Done] |
 
 ---
 
-## 2. How to run the code
+## 2. Dataset
+
+### We used 3 datasets, one for each purpose
+
+1. SKU-110k (stock keeping unit): Dataset for object detection in densely packed scenes such as supermarket shelves. We only detect (an) object (no name, no brand, no category). This was used to fine-tune the YOLO model (not labelled with products names).
+2. Web-scrapped dataset from Ametller online shop: This was used in order to obtain product images from Ametller with labels.
+3. Took photos from Ametller, created bounding boxes and labelled the products in the bounding boxes in order to evaluate the performance of our project. 
+
+## 3. How to run the code
 
 ### Requirements
 - Python **3.10+** (the codebase uses `X | None` type syntax at runtime).
@@ -88,6 +94,15 @@ pip install -r requirements.txt
 ```bash
 python project.py --image path/to/shelf.jpg   # single image
 python project.py --webcam 0                   # live; type `listen` for a voice command
+
+Case 1 - Image input:
+process_image
+process_image <image_path>
+describe_scene
+Describe the current scene.
+
+Case 2 - Video input:
+
 ```
 
 ### Tests
@@ -100,8 +115,6 @@ python test_scene_memory.py
 ## 3. Experiments
 
 > Each subsection: **Hypothesis → Setup → Results → Conclusions.**
-> Note which are *training* experiments (YOLO, intent classifier) vs *evaluation /
-> tuning / integration* experiments (CLIP, MediaPipe, scene memory, description).
 
 ---
 
@@ -129,8 +142,19 @@ relative to the frame.
   our own Ametller/iPhone shelf photos. Artifacts in `object_detector/train_yolo_results/`.
 
 **Results**
-- [PLACEHOLDER — val mAP@0.5, mAP@0.5:0.95.]
-- [PLACEHOLDER — training/val loss & mAP curves from `train_yolo_results/`.]
+- **mAP@0.5 ≈ 0.92** — at an IoU threshold of 0.50, the detector localizes shelf
+  products with high precision/recall.
+- **mAP@0.5:0.95 = 0.58** — averaged over stricter IoU thresholds (0.50–0.95),
+  the score drops, indicating boxes are found reliably but not always tightly
+  aligned to the product edges.
+- **Training curves** (below): all training and validation losses (box, cls, dfl)
+  decrease smoothly and converge, with no divergence between train and val — no
+  sign of overfitting. Precision (~0.92), recall (~0.88), mAP@0.5 (~0.92) and
+  mAP@0.5:0.95 (~0.58) all rise and plateau over ~45 epochs.
+
+  <img src="images/Yolo-results.png" width="700" alt="YOLO training and validation curves">
+
+  *Figure 1 — YOLO11 training/validation losses and detection metrics over epochs.*
 - [PLACEHOLDER — 2–3 annotated sample images on our own photos.]
 - [PLACEHOLDER — 640 vs 768 comparison if run.]
 
@@ -150,10 +174,53 @@ grows), we expect a frozen CLIP encoder plus a small catalog of reference images
 to identify a cropped product by nearest-neighbour in embedding space — and that
 confidence thresholds can suppress wrong guesses on products not in the catalog.
 
+**Prior approach and why we changed**
+Our first attempt was **image-to-text**: we fine-tuned the last two layers of a
+CLIP model so that a bounding-box crop's image embedding would align with the
+**text embedding of the product label**, and identified a product by matching the
+crop against those label embeddings. Evaluated over a catalog of **~1000 products**,
+this reached **recall@1 ≈ 70%**.
+
+The decisive problem, however, was **not** the aggregate recall figure — it was
+that specific products were **consistently, reproducibly mismatched**, not randomly
+wrong. Two linked weaknesses drove this:
+
+1. **Language dependency.** Product labels were in Spanish/Catalan, while CLIP's
+   text encoder is trained predominantly on English, so labels had to be translated
+   to English to match at all — an extra, fragile step in the pipeline.
+2. **Weak, coarse text matching even after translation.** Similarity scores stayed
+   low (~0.26–0.34) and semantically-adjacent products were reliably confused. For
+   example (query shown as `Spanish label → English translation`, then top matches
+   with cosine scores):
+
+   ```
+   'yogur natural' → 'natural yogurt'
+     [0.314] Yogur natural de cabra Hacendado — Postres y yogures
+     [0.313] Queso fresco Burgos natural Hacendado — Charcutería y quesos   ← fresh CHEESE, not yogurt
+     [0.291] Queso fresco Burgos natural Hacendado — Charcutería y quesos
+
+   'pan de molde' → 'sliced bread'
+     [0.337] Barra pan de pueblo rebanada — Panadería y pastelería          ← a baguette-style loaf,
+     [0.322] Barra de pan espiga rebanado — Panadería y pastelería             not sandwich bread
+     [0.321] Barra de pan campesina masa madre rebanada — Panadería y pastelería
+   ```
+
+   The matches are near-ties at low confidence, so the "winner" for these items was
+   effectively arbitrary among a cluster of wrong-but-related products.
+
+For an assistive use case, a system that *reliably* fails on specific products is
+worse than one that fails randomly: the user learns it "can never find" those items.
+
+We therefore switched to the **image-to-image** method described below: comparing the
+crop's image embedding directly to image embeddings of catalog photos. This removes
+text — and therefore the translation step and language dependency — from the pipeline
+entirely, and compares like-with-like (photo vs photo) instead of photo vs label. It
+is also zero-shot (no fine-tuning) and scales simply by adding more reference images.
+
 **Experiment setup**
 - **Model:** `open_clip` ViT-B-32 (laion2b), frozen — no fine-tuning.
-- **Catalog:** [N] reference products (currently **10** SKUs, mostly milks, mostly
--  plant-based milks, scraped from Ametller; embeddings precomputed in
+- **Catalog:** [N] reference products (currently **10** SKUs, mostly plant-based
+  milks, scraped from Ametller; embeddings precomputed in
   `product_db/embeddings/`). Metadata in `products.sqlite`.
 - **Matching:** cosine similarity of the crop embedding vs catalog embeddings;
   accept if `score ≥ MIN_SCORE (0.70)` and `confidence ≥ MIN_CONFIDENCE (0.80)`;

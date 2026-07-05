@@ -161,10 +161,53 @@ grows), we expect a frozen CLIP encoder plus a small catalog of reference images
 to identify a cropped product by nearest-neighbour in embedding space — and that
 confidence thresholds can suppress wrong guesses on products not in the catalog.
 
+**Prior approach and why we changed**
+Our first attempt was **image-to-text**: we fine-tuned the last two layers of a
+CLIP model so that a bounding-box crop's image embedding would align with the
+**text embedding of the product label**, and identified a product by matching the
+crop against those label embeddings. Evaluated over a catalog of **~1000 products**,
+this reached **recall@1 ≈ 70%**.
+
+The decisive problem, however, was **not** the aggregate recall figure — it was
+that specific products were **consistently, reproducibly mismatched**, not randomly
+wrong. Two linked weaknesses drove this:
+
+1. **Language dependency.** Product labels were in Spanish/Catalan, while CLIP's
+   text encoder is trained predominantly on English, so labels had to be translated
+   to English to match at all — an extra, fragile step in the pipeline.
+2. **Weak, coarse text matching even after translation.** Similarity scores stayed
+   low (~0.26–0.34) and semantically-adjacent products were reliably confused. For
+   example (query shown as `Spanish label → English translation`, then top matches
+   with cosine scores):
+
+   ```
+   'yogur natural' → 'natural yogurt'
+     [0.314] Yogur natural de cabra Hacendado — Postres y yogures
+     [0.313] Queso fresco Burgos natural Hacendado — Charcutería y quesos   ← fresh CHEESE, not yogurt
+     [0.291] Queso fresco Burgos natural Hacendado — Charcutería y quesos
+
+   'pan de molde' → 'sliced bread'
+     [0.337] Barra pan de pueblo rebanada — Panadería y pastelería          ← a baguette-style loaf,
+     [0.322] Barra de pan espiga rebanado — Panadería y pastelería             not sandwich bread
+     [0.321] Barra de pan campesina masa madre rebanada — Panadería y pastelería
+   ```
+
+   The matches are near-ties at low confidence, so the "winner" for these items was
+   effectively arbitrary among a cluster of wrong-but-related products.
+
+For an assistive use case, a system that *reliably* fails on specific products is
+worse than one that fails randomly: the user learns it "can never find" those items.
+
+We therefore switched to the **image-to-image** method described below: comparing the
+crop's image embedding directly to image embeddings of catalog photos. This removes
+text — and therefore the translation step and language dependency — from the pipeline
+entirely, and compares like-with-like (photo vs photo) instead of photo vs label. It
+is also zero-shot (no fine-tuning) and scales simply by adding more reference images.
+
 **Experiment setup**
 - **Model:** `open_clip` ViT-B-32 (laion2b), frozen — no fine-tuning.
-- **Catalog:** [N] reference products (currently **10** SKUs, mostly milks, mostly
--  plant-based milks, scraped from Ametller; embeddings precomputed in
+- **Catalog:** [N] reference products (currently **10** SKUs, mostly plant-based
+  milks, scraped from Ametller; embeddings precomputed in
   `product_db/embeddings/`). Metadata in `products.sqlite`.
 - **Matching:** cosine similarity of the crop embedding vs catalog embeddings;
   accept if `score ≥ MIN_SCORE (0.70)` and `confidence ≥ MIN_CONFIDENCE (0.80)`;

@@ -64,7 +64,7 @@ We integrated different models to address all the needs of the user.
 
 ### Requirements
 - Python **3.10+** (the codebase uses `X | None` type syntax at runtime).
-- [OS / GPU notes.]
+- Linux or macOS, Nvidia GPU for better performance
 
 ### Setup
 ```bash
@@ -74,12 +74,14 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Model files (not in the repo — download separately)
-| File | Put in | Source |
+### Model files (download separately from this Google Drive [folder](https://drive.google.com/drive/folders/1Looy2jQJs1j0C8SvU6CuQzLTPKX01EGI))
+| File | Save in | Size |
 |---|---|---|
-| `sku110k_768_e20_pat5.pt` (YOLO weights) | `object_detector/` | [Drive link] |
-| `hand_landmarker.task` (MediaPipe) | project root | https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task |
-| `intent_classifier.pt` (intent model) | `intent_classifier/checkpoints/` | [Drive link, or train via `python -m intent_classifier.train`] |
+| `sku110k_768_e20_pat5.pt` (YOLO weights) | `object_detector/` | 39 MB |
+| `hand_landmarker.task` (MediaPipe) | project root | 7.5 MB |
+| `intent_classifier.pt` (intent model) | `intent_classifier/checkpoints/` | 515 MB |
+| `voice_models` (piper-tts voices) | `voice/models` | 341 MB |
+
 
 ### Running
 ```bash

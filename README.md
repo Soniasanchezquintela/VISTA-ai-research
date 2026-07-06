@@ -394,14 +394,11 @@ enough for the limited command vocabulary of this application.
   end-to-end voice→intent on live mic samples].
 
 **Results**
-- [PLACEHOLDER — validation accuracy + per-intent confusion matrix.]
-- [PLACEHOLDER — training/val accuracy curve from `checkpoints/`.]
-- [PLACEHOLDER — end-to-end examples: spoken phrase → transcription → intent.]
+
+  <img src="images/intent-classifier.png" width="700" alt="YOLO training and validation curves">
 
 **Conclusions**
-[Which intents are reliable vs confused (small dataset risk); how STT errors
-cascade into wrong intents; whether 202 examples / 7 classes is enough or the
-dataset needs expansion; Spanish vs Catalan coverage. New hypotheses.]
+[The intent classifier is capable of understanding the user's intent with high precision and is therefore suitable for it's purpose.]
 
 ---
 

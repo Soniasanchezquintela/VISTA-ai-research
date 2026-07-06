@@ -74,6 +74,11 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Under Linux, you might also need to install a few extra packages. We have a helper script for this purpose:
+```
+$ ./apt_packages.sh
+```
+
 ### Model files (download separately from this Google Drive [folder](https://drive.google.com/drive/folders/1Looy2jQJs1j0C8SvU6CuQzLTPKX01EGI))
 | File | Save in | Size |
 |---|---|---|

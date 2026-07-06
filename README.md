@@ -1,12 +1,4 @@
-<!--
-  REPORT SKELETON (PRELIMINARY DRAFT) — not the final report.
-  Hypothesis & Setup are filled in as a guideline; verify against your actual work.
-  RESULTS sections contain [PLACEHOLDER] — fill with REAL numbers/figures. Do NOT
-  ship invented metrics. Delete these HTML comments before submitting.
-  When ready, this content moves into README.md (the graded Final Report).
--->
-
-# VISTA — [project tagline, e.g. "Assistive shelf navigation for visually impaired shoppers"]
+# An AI-shopping assistant for visually impaired and blind people
 
 > 🔗 **Repository:** https://github.com/Soniasanchezquintela/VISTA-ai-research
 > (Link also available in the PPT presentation).
@@ -23,7 +15,7 @@ It is about dignity”. Improving the shopping experience for visually impaired 
 
 **Social Motivation/Impact.** For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
 blind or visually impaired person, finding a product on a shelf can require depending on someone else being available
-to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like teh visually impaired.
+to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like the visually impaired.
 
 **Goal.** VISTA is a prototype assistive system that uses a single camera and the
 user's voice to (a) describe the products on a shelf, and (b) tell the user what

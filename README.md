@@ -3,8 +3,7 @@
 > 🔗 **Repository:** https://github.com/Soniasanchezquintela/VISTA-ai-research
 > (Link also available in the PPT presentation).
 > 
-“Accessibility if not about convenience, 
-It is about dignity”. Improving the shopping experience for visually impaired people.
+"Accessibility is not about convenience; it is about dignity." Improving the shopping experience for visually impaired people.
 
 **Team Members:** Ramon Viedma, Sonia Sánchez, Nuria Olvera, Petros Zonias
 **Advisor:** Amanda Duarte
@@ -13,9 +12,9 @@ It is about dignity”. Improving the shopping experience for visually impaired 
 
 ## 1. Overview
 
-**Social Motivation/Impact.** For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a 
+**Social Motivation/Impact.** For a sighted person, shopping in a supermarket can be a simple 20-minute task. For a
 blind or visually impaired person, finding a product on a shelf can require depending on someone else being available
-to assist. This projects aims to reduce that dependence.With the VISTA project we want to give users more autonomy, confidence, and independence for the day shopping tasks. It also can allow shops/retailers implement social safeguards using AI for Good for special collectives like the visually impaired.
+to assist them. This project aims to reduce that dependence. With the VISTA project, we want to give users more autonomy, confidence, and independence in daily shopping tasks. It can also allow shops and retailers to implement social safeguards using AI for Good for groups such as visually impaired people.
 
 **Goal.** VISTA is a prototype assistive system that uses a single camera and the
 user's voice to (a) describe the products on a shelf, and (b) tell the user what
@@ -36,11 +35,11 @@ product they are pointing at — spoken back in their language.
 
 
 We integrated different models to address all the needs of the user. 
-1)The product detector is working constantly in accordance with the CLIP model in order to identify bounding boxes and assign them to products.
-2)As soon as the user wants to interact with the system they use the voice input paired with the intent classifier in order to request a specific function from the system (describe scene, identify pointed product).
-3)The request goes to the scene memory module which keeps track of bounding box identities across frames and accounts for head movement or bounding box occlusion due to pointing hand obstruction.
-5)The coordinates from the YOLO output are fed into Gemma which is then abole to group them in shelves based on their position.
-4)The scene description module then delivers a user-friendly response according to the user request.
+1. The product detector works constantly with the CLIP model to identify bounding boxes and assign them to products.
+2. As soon as the user wants to interact with the system, they use voice input paired with the intent classifier to request a specific function from the system (describe the scene, identify the pointed-at product).
+3. The request goes to the scene memory module, which keeps track of bounding box identities across frames and accounts for head movement or bounding box occlusion due to the pointing hand.
+4. The coordinates from the YOLO output are fed into Gemma, which is then able to group them by shelf based on their position.
+5. The scene description module then delivers a user-friendly response according to the user request.
 
 | Component | Module | Trained by us? | Status |
 |---|---|---|---|
@@ -57,9 +56,9 @@ We integrated different models to address all the needs of the user.
 
 ### We used 3 datasets, one for each purpose
 
-1. SKU-110k (stock keeping unit): Dataset for object detection in densely packed scenes such as supermarket shelves. We only detect (an) object (no name, no brand, no category). This was used to fine-tune the YOLO model (not labelled with products names).
-2. Web-scrapped dataset from Ametller online shop: This was used in order to obtain product images from Ametller with labels.
-3. Took photos from Ametller, created bounding boxes and labelled the products in the bounding boxes in order to evaluate the performance of our project. 
+1. SKU-110k (stock keeping unit): Dataset for object detection in densely packed scenes such as supermarket shelves. We only detect an object (no name, no brand, no category). This was used to fine-tune the YOLO model (not labelled with product names).
+2. Web-scraped dataset from the Ametller online shop: This was used to obtain product images from Ametller with labels.
+3. We took photos at Ametller, created bounding boxes, and labelled the products in the bounding boxes in order to evaluate the performance of our project.
 
 ## 3. How to run the code
 
@@ -92,7 +91,7 @@ process_image - process_image <image_path>
 describe_scene - Describe the current scene
 
 Case 2 - Video input:
-listen - activates the module that listens for the users voice command
+listen - activates the module that listens for the user's voice command
 describe_scene - describes the products present in the scene
 describe_pointed_product - gives the name of the pointed product
 ```
@@ -195,7 +194,7 @@ output:
 
 - **"Describe the scene"** → takes the visible products from scene memory (§4.2) and
   passes them to the description module (§4.4).
-- **"What am I pointing at?"** → takes the product that pointing (§4.1) + scene memory
+- **"What am I pointing at?"** → takes the product that the pointing module (§4.1) and scene memory
   resolved as *touched*, and describes that one.
 - **"Navigate to \<target\>"** → looks up the target product in scene memory.
 
@@ -227,7 +226,7 @@ tracks from scene memory (for "describe scene") or the single touched track (for
 
 ## 5. Experiments
 
-These are different experiments that we ran in order to find the optimal configuration of our system and which modules work best.
+These are different experiments that we ran in order to find the optimal configuration of our system and determine which modules work best.
 
 > Each subsection: **Hypothesis → Setup → Results → Conclusions.**
 
@@ -238,7 +237,7 @@ These are different experiments that we ran in order to find the optimal configu
 
 **Hypothesis**
 We expect that fine-tuning YOLO11 on SKU110K (a dataset built specifically for dense retail
-shelves) will allow for accurate object detection in a supermarket setting with a mAP@0.5 > 80%. This is only used for drawing bounding boxes around products, not classifying them.
+shelves) will allow for accurate object detection in a supermarket setting with an mAP@0.5 > 80%. This is used only for drawing bounding boxes around products, not classifying them.
 
 **Experiment setup**
 - **Base model:** `yolo11m.pt` (Ultralytics YOLO11-medium).
@@ -414,16 +413,16 @@ dataset needs expansion; Spanish vs Catalan coverage. New hypotheses.]
 tie back to the assistive use case.]
 🚀 Overall, this multi-modal approach to support the visually impaired works and shows
 a lot of potential. 
-💡We have learned that the systems nees from than frame-by-frame AI; it needs memory,
+💡 We have learned that the system needs more than frame-by-frame AI; it needs memory,
 confidence, tracking, and user-centered interaction. 
-⚒️ What we would do differently: collect realistic video data earlier, design the scene 
-memory layer from teh start, modularize the pipeline more clearly, work in robustness,
+⚒️ What we would do differently: collect realistic video data earlier, design the scene
+memory layer from the start, modularize the pipeline more clearly, work on robustness,
 and evaluate sooner. 
 
-What next steps could be: 
-🛍️ Increase the supermarket dataset to have more images and a more diversified set 
-of sub-contexts within the supermarket (e.g., product type, disposition, light, access).
-👩‍✈️Pilot the project with visually impaired persons.
+Next steps could include:
+🛍️ Increase the supermarket dataset to have more images and a more diverse set
+of contexts within the supermarket (e.g., product type, arrangement, light, access).
+👩‍✈️ Pilot the project with visually impaired people.
 
 ---
 

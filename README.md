@@ -187,9 +187,6 @@ occlusion survival/removal, pointing resolution, voting, bbox smoothing) and by
 qualitative webcam runs (stable IDs, grey box reviving after a hand passes, no
 ghost-box swarm on head turns).
 
-*Demonstration:* [PLACEHOLDER — screenshot of a product keeping its ID while briefly
-covered (grey "lost" box → revived), and green boxes once CLIP recognizes a product.]
-
 ### 4.3 User interaction — voice & intent (`voice_to_text.py`, `intent_classifier/`)
 
 This layer is **activated by the user** and is what tells the system *what to do* with
@@ -222,12 +219,7 @@ positions and produces a richer, shelf-aware description. The inputs are the vis
 tracks from scene memory (for "describe scene") or the single touched track (for
 "what am I pointing at?").
 
-*Demonstration* — sample outputs:
-- Scene description: [PLACEHOLDER — paste a real example, e.g. *"La escena contiene
-  leche de avena Oatly y leche de soja Alpro. Además, hay 2 productos que no
-  reconozco."*]
-- Pointed product (recognized): [PLACEHOLDER — real example]
-- Pointed product (unrecognized): [PLACEHOLDER — the "aparta la mano" fallback message]
+
 
 ---
 
